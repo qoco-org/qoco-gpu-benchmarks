@@ -31,7 +31,7 @@ def run_portfolio_benchmarks():
     # Set fixed random seed for reproducibility
     np.random.seed(42)
     
-    k_values = [10, 50, 100]
+    k_values = [10, 50, 100, 200, 500]
     solvers = {
         "qoco": lambda prob: run_qoco(prob, algebra=None),
         "qoco_cuda": lambda prob: run_qoco(prob, algebra="cuda"),
@@ -54,7 +54,14 @@ def run_portfolio_benchmarks():
         # Calculate problem size once per k
         problem_size = get_problem_size(prob)
         
-        for solver_name, solver_func in solvers.items():
+        # For k >= 1000, only run CUDA solvers
+        if k > 500:
+            active_solvers = {name: func for name, func in solvers.items() 
+                            if name in ["cuclarabel", "qoco_cuda"]}
+        else:
+            active_solvers = solvers
+        
+        for solver_name, solver_func in active_solvers.items():
             print(f"  Running {solver_name}...")
             try:                
                 # Warmup CUDA solvers on first call

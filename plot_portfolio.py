@@ -3,6 +3,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
+# Enable LaTeX rendering
+plt.rcParams['text.usetex'] = True
+plt.rcParams['font.family'] = 'serif'
+
 
 def plot_portfolio_results():
     """
@@ -14,13 +18,13 @@ def plot_portfolio_results():
         print(f"Error: {portfolio_dir} directory does not exist!")
         return
     
-    # Solver names and their display names
+    # Solver names and their display names (using LaTeX formatting)
     solvers = {
-        "qoco": "QOCO",
-        "qoco_cuda": "QOCO (CUDA)",
-        "clarabel": "Clarabel",
-        "cuclarabel": "CUClarabel",
-        "mosek": "MOSEK"
+        "qoco": r"\textsc{QOCO}",
+        "qoco_cuda": r"\textsc{QOCO} (\textsc{GPU})",
+        "clarabel": r"\textsc{Clarabel}",
+        "cuclarabel": r"\textsc{Clarabel} (\textsc{GPU})",
+        "mosek": r"\textsc{MOSEK}"
     }
     
     # Read all CSV files and plot
@@ -52,9 +56,9 @@ def plot_portfolio_results():
         # Plot
         plt.plot(df["size"], df["runtime"], marker="o", label=display_name, linewidth=2, markersize=6)
     
-    plt.xlabel("Problem Size (nnz(A) + nnz(P))", fontsize=12)
-    plt.ylabel("Runtime (seconds)", fontsize=12)
-    plt.title("Portfolio Optimization: Runtime vs Problem Size", fontsize=14)
+    plt.xlabel(r"Problem Size $\mathrm{nnz}(A) + \mathrm{nnz}(P)$", fontsize=12)
+    plt.ylabel(r"Runtime (seconds)", fontsize=12)
+    plt.title(r"Portfolio Optimization: Runtime vs Problem Size", fontsize=14)
     plt.legend(fontsize=10)
     plt.grid(True, alpha=0.3)
     plt.xscale("log")
