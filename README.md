@@ -1,4 +1,5 @@
 # qoco-gpu-benchmarks
 
-- Handparse portfolio problems (limitation is cvxpy parsetime)
+- Add solve methods for clarabel, qoco, and cuda versions of them given handparsed data
+- Decide what solvers to use (Gurobi)
 - Add more problems
