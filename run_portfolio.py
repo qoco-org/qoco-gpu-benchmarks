@@ -6,12 +6,15 @@ import numpy as np
 import pandas as pd
 import cvxpy as cp
 from scipy import sparse
-from problems.portfolio import portfolio
-from solvers import run_clarabel, run_qoco, run_mosek
+from problems.portfolio import portfolio_handparsed
+from solvers import run_clarabel, run_qoco, run_mosek, ProblemData
 
 
 def get_problem_size(prob):
     """Calculate problem size as nnz(A) + nnz(P)"""
+
+    if isinstance(prob, ProblemData):
+        return prob.P.nnz + prob.A.nnz + prob.G.nnz
     data, _, _ = prob.get_problem_data(cp.CLARABEL)
     nnzA = data["A"].nnz
     nnzP = 0
@@ -31,13 +34,14 @@ def run_portfolio_benchmarks():
     # Set fixed random seed for reproducibility
     np.random.seed(42)
 
-    k_values = [10, 50, 100, 200, 500]
+    # k_values = [10, 50, 100, 200, 500, 1000, 1500, 2000, 2500, 3000]
+    k_values = [10, 50, 100, 200, 500, 1000, 1500]
     solvers = {
-        "qoco": lambda prob: run_qoco(prob, algebra=None),
+        # "qoco": lambda prob: run_qoco(prob, algebra=None),
         "qoco_cuda": lambda prob: run_qoco(prob, algebra="cuda"),
-        "clarabel": lambda prob: run_clarabel(prob, algebra=None),
+        # "clarabel": lambda prob: run_clarabel(prob, algebra=None),
         "cuclarabel": lambda prob: run_clarabel(prob, algebra="cuda"),
-        "mosek": lambda prob: run_mosek(prob),
+        # "mosek": lambda prob: run_mosek(prob),
     }
 
     # Dictionary to store all results
@@ -50,7 +54,7 @@ def run_portfolio_benchmarks():
     # Run benchmarks for each k value
     for k in k_values:
         print(f"Solving portfolio problem for k={k}...")
-        prob = portfolio(k)
+        prob = portfolio_handparsed(k)
         # Calculate problem size once per k
         problem_size = get_problem_size(prob)
 

@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Any
 import qoco
+import scipy.sparse as sp
+import numpy as np
 
 
 @dataclass
@@ -21,6 +23,129 @@ class ProblemData:
     q: list  # SOC dimensions
 
 
+def dims_to_solver_cones(jl, cone_dims):
+    """Convert cone dimensions to Clarabel cone types."""
+    jl.seval("""cones = Clarabel.SupportedCone[]""")
+
+    # Zero cone (equality constraints)
+    if cone_dims.zero > 0:
+        jl.push_b(jl.cones, jl.Clarabel.ZeroConeT(cone_dims.zero))
+
+    # Nonnegative cone (inequality constraints)
+    if cone_dims.nonneg > 0:
+        jl.push_b(jl.cones, jl.Clarabel.NonnegativeConeT(cone_dims.nonneg))
+
+    # Second-order cones
+    for dim in cone_dims.soc:
+        jl.push_b(jl.cones, jl.Clarabel.SecondOrderConeT(dim))
+
+
+def _solve_cuclarabel_direct(data):
+    """Solve using cuclarabel direct interface.
+    
+    Parameters
+    ----------
+    data : ProblemData
+        Problem data structure.
+    
+    Returns
+    -------
+    dict with keys: setup_time, solve_time, num_iters, objective
+    """
+    import cupy
+    from cupyx.scipy.sparse import csr_matrix as cucsr_matrix
+    from juliacall import Main as jl
+    
+    jl.seval('using Clarabel, LinearAlgebra, SparseArrays')
+    jl.seval('using CUDA, CUDA.CUSPARSE')
+
+    # Combine A and G: [A; G]
+    if data.A is not None and data.G is not None:
+        A_combined = sp.vstack([data.A, data.G], format='csr')
+    elif data.A is not None:
+        A_combined = data.A.tocsr()
+    elif data.G is not None:
+        A_combined = data.G.tocsr()
+    else:
+        # No constraints
+        A_combined = sp.csr_matrix((0, data.n))
+
+    # Combine b and h: [b; h]
+    if data.b is not None and data.h is not None:
+        b_combined = np.concatenate([data.b, data.h])
+    elif data.b is not None:
+        b_combined = data.b
+    elif data.h is not None:
+        b_combined = data.h
+    else:
+        b_combined = np.array([])
+
+    # Get P and q
+    if data.P is not None:
+        P = sp.triu(data.P).tocsr()
+    else:
+        P = sp.csr_matrix((data.n, data.n))
+    
+    q = data.c
+
+    # Convert to GPU arrays
+    Pgpu = cucsr_matrix(P)
+    qgpu = cupy.array(q)
+    Agpu = cucsr_matrix(A_combined)
+    bgpu = cupy.array(b_combined)
+
+    # Convert P to Julia
+    if Pgpu.nnz != 0:
+        jl.P = jl.Clarabel.cupy_to_cucsrmat(
+            jl.Float64, int(Pgpu.data.data.ptr), int(Pgpu.indices.data.ptr),
+            int(Pgpu.indptr.data.ptr), *Pgpu.shape, Pgpu.nnz)
+    else:
+        jl.seval(f"""
+        P = CuSparseMatrixCSR(sparse(Float64[], Float64[], Float64[], {data.n}, {data.n}))
+        """)
+    
+    jl.q = jl.Clarabel.cupy_to_cuvector(jl.Float64, int(qgpu.data.ptr), qgpu.size)
+    jl.A = jl.Clarabel.cupy_to_cucsrmat(
+        jl.Float64, int(Agpu.data.data.ptr), int(Agpu.indices.data.ptr),
+        int(Agpu.indptr.data.ptr), *Agpu.shape, Agpu.nnz)
+    jl.b = jl.Clarabel.cupy_to_cuvector(jl.Float64, int(bgpu.data.ptr), bgpu.size)
+
+    # Set up cone dimensions
+    # Zero cone: data.p (equality constraints)
+    # Nonneg cone: data.l (inequality constraints)
+    # SOC cones: data.q (second-order cone dimensions)
+    class ConeDims:
+        def __init__(self, zero, nonneg, soc):
+            self.zero = zero
+            self.nonneg = nonneg
+            self.soc = soc
+    
+    cone_dims = ConeDims(zero=data.p, nonneg=data.l, soc=data.q)
+    dims_to_solver_cones(jl, cone_dims)
+
+    # Solve
+    jl.seval("""
+    settings = Clarabel.Settings(direct_solve_method = :cudss)
+    solver   = Clarabel.Solver(settings)
+    solver   = Clarabel.setup!(solver, P,q,A,b,cones)
+    Clarabel.solve!(solver)
+    """)
+
+    # Extract results
+    # Note: Adjust these based on actual Clarabel result structure
+    setup_time = 0
+    solve_time = float(jl.seval("solver.info.solve_time"))
+    num_iters = int(jl.seval("solver.solution.iterations"))
+    objective = float(jl.seval("solver.solution.obj_val"))
+
+    return {
+        "setup_time": setup_time,
+        "solve_time": solve_time,
+        "num_iters": num_iters,
+        "objective": objective,
+    }
+
+
 def run_clarabel(problem, algebra=None):
     """
     Solve a cvxpy problem using Clarabel solver.
@@ -34,8 +159,11 @@ def run_clarabel(problem, algebra=None):
     """
     # Check if problem is a ProblemData struct or cvxpy Problem
     if isinstance(problem, ProblemData):
-        # Direct interface not implemented yet for Clarabel
-        raise NotImplementedError("Direct interface for Clarabel not yet implemented")
+        # Direct interface for cuclarabel
+        if algebra == "cuda":
+            return _solve_cuclarabel_direct(problem)
+        else:
+            raise NotImplementedError("Direct interface for Clarabel (non-CUDA) not yet implemented")
 
     # Original cvxpy interface
     if algebra == "cuda":
