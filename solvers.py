@@ -138,6 +138,30 @@ def _solve_cuclarabel_direct(data):
     num_iters = int(jl.seval("solver.solution.iterations"))
     objective = float(jl.seval("solver.solution.obj_val"))
 
+    # Free Julia CUDA arrays and clear references
+    # Clear solver and all Julia variables that hold CUDA arrays
+    jl.seval("""
+    solver = nothing
+    P = nothing
+    q = nothing
+    A = nothing
+    b = nothing
+    cones = nothing
+    settings = nothing
+    # Force garbage collection to free CUDA memory
+    GC.gc()
+    # Also trigger CUDA memory pool cleanup
+    CUDA.reclaim()
+    """)
+    
+    # All Julia code is complete and CUDA arrays freed - now safe to free CuPy arrays and matrices
+    del Pgpu
+    del qgpu
+    del Agpu
+    del bgpu
+    # Don't aggressively free all blocks as Julia might still have internal references
+    # cupy.get_default_memory_pool().free_all_blocks()
+
     return {
         "setup_time": setup_time,
         "solve_time": solve_time,
