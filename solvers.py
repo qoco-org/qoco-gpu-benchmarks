@@ -159,8 +159,7 @@ def _solve_cuclarabel_direct(data):
     del qgpu
     del Agpu
     del bgpu
-    # Don't aggressively free all blocks as Julia might still have internal references
-    # cupy.get_default_memory_pool().free_all_blocks()
+    cupy.get_default_memory_pool().free_all_blocks()
 
     return {
         "setup_time": setup_time,

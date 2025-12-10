@@ -34,8 +34,7 @@ def run_portfolio_benchmarks():
     # Set fixed random seed for reproducibility
     np.random.seed(42)
 
-    # k_values = [10, 50, 100, 200, 500, 1000, 1500, 2000, 2500, 3000]
-    k_values = [10, 50, 100, 200, 500, 1000, 1500, 2000]
+    k_values = [10, 50, 100, 200, 500, 1000, 1500]
     solvers = {
         # "qoco": lambda prob: run_qoco(prob, algebra=None),
         "qoco_cuda": lambda prob: run_qoco(prob, algebra="cuda"),
