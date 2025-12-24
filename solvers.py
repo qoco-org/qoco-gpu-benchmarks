@@ -125,7 +125,7 @@ def _solve_cuclarabel_direct(data):
 
     # Solve
     jl.seval("""
-    settings = Clarabel.Settings(direct_solve_method = :cudss)
+    settings = Clarabel.Settings(direct_solve_method = :cudss, tol_gap_abs=1e-7, tol_gap_rel=1e-7, tol_feas=1e-7)
     solver   = Clarabel.Solver(settings)
     solver   = Clarabel.setup!(solver, P,q,A,b,cones)
     Clarabel.solve!(solver)
