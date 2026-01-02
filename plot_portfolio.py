@@ -1,12 +1,11 @@
 import os
 import pandas as pd
 import matplotlib.pyplot as plt
-import numpy as np
 
 # Enable LaTeX rendering
 plt.rcParams["text.usetex"] = True
 plt.rcParams["font.family"] = "serif"
-SOLVED_STRINGS = ["QOCO_SOLVED", "SOLVED"]
+SOLVED_STRINGS = ["QOCO_SOLVED", "SOLVED", "Solved", "optimal"]
 
 
 def plot_portfolio_results():

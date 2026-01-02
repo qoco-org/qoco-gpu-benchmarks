@@ -4,28 +4,45 @@ import qoco
 import scipy.sparse as sp
 import numpy as np
 import clarabel
+import cvxpy as cp
 
+SOLVERS = {
+    "qoco": lambda prob: run_qoco(prob, algebra=None),
+    "qoco_cuda": lambda prob: run_qoco(prob, algebra="cuda"),
+    "clarabel": lambda prob: run_clarabel(prob, algebra=None),
+    "cuclarabel": lambda prob: run_clarabel(prob, algebra="cuda"),
+    "mosek": lambda prob: run_mosek(prob),
+}
+
+def get_problem_size(prob):
+    """Calculate problem size as nnz(A) + nnz(P)"""
+
+    if isinstance(prob, ProblemData):
+        return prob.P.nnz + prob.A.nnz + prob.G.nnz
+    data, _, _ = prob.get_problem_data(cp.CLARABEL)
+    nnzA = data["A"].nnz
+    nnzP = 0
+    if "P" in data.keys():
+        nnzP = sp.triu(data["P"], format="csc").nnz
+    return nnzP + nnzA
 
 @dataclass
 class ProblemData:
-    """Data structure containing problem data for direct solver interface."""
-
     n: int  # number of variables
     m: int  # number of equality constraints
     p: int  # number of inequality constraints
-    P: Any  # quadratic form matrix (sparse)
-    c: Any  # linear term (array)
-    A: Any  # equality constraint matrix (sparse)
-    b: Any  # equality constraint RHS (array)
-    G: Any  # inequality constraint matrix (sparse)
-    h: Any  # inequality constraint RHS (array)
+    P: Any  # quadratic cost
+    c: Any  # linear cost
+    A: Any  # equality constraint matrix
+    b: Any  # equality constraint RHS
+    G: Any  # inequality constraint matrix
+    h: Any  # inequality constraint RHS
     l: int  # lower bounds
     nsoc: int  # number of second-order cones
     q: list  # SOC dimensions
 
 
 def dims_to_solver_cones(jl, cone_dims):
-    """Convert cone dimensions to Clarabel cone types."""
     jl.seval("""cones = Clarabel.SupportedCone[]""")
 
     # Zero cone (equality constraints)
@@ -41,18 +58,7 @@ def dims_to_solver_cones(jl, cone_dims):
         jl.push_b(jl.cones, jl.Clarabel.SecondOrderConeT(dim))
 
 
-def _solve_cuclarabel_direct(data):
-    """Solve using cuclarabel direct interface.
-
-    Parameters
-    ----------
-    data : ProblemData
-        Problem data structure.
-
-    Returns
-    -------
-    dict with keys: setup_time, solve_time, num_iters, objective
-    """
+def solve_cuclarabel_direct(data):
     import cupy
     from cupyx.scipy.sparse import csr_matrix as cucsr_matrix
     from juliacall import Main as jl
@@ -136,7 +142,6 @@ def _solve_cuclarabel_direct(data):
     cone_dims = ConeDims(zero=data.p, nonneg=data.l, soc=data.q)
     dims_to_solver_cones(jl, cone_dims)
 
-    # Solve
     jl.seval(
         """
     settings = Clarabel.Settings(direct_solve_method = :cudss, tol_gap_abs=1e-7, tol_gap_rel=1e-7, tol_feas=1e-7)
@@ -146,16 +151,12 @@ def _solve_cuclarabel_direct(data):
     """
     )
 
-    # Extract results
-    # Note: Adjust these based on actual Clarabel result structure
     setup_time = 0
     solve_time = float(jl.seval("solver.info.solve_time"))
     num_iters = int(jl.seval("solver.solution.iterations"))
     objective = float(jl.seval("solver.solution.obj_val"))
     status = str(jl.seval("solver.solution.status"))
 
-    # Free Julia CUDA arrays and clear references
-    # Clear solver and all Julia variables that hold CUDA arrays
     jl.seval(
         """
     solver = nothing
@@ -165,14 +166,11 @@ def _solve_cuclarabel_direct(data):
     b = nothing
     cones = nothing
     settings = nothing
-    # Force garbage collection to free CUDA memory
     GC.gc()
-    # Also trigger CUDA memory pool cleanup
     CUDA.reclaim()
     """
     )
 
-    # All Julia code is complete and CUDA arrays freed - now safe to free CuPy arrays and matrices
     del Pgpu
     del qgpu
     del Agpu
@@ -181,6 +179,7 @@ def _solve_cuclarabel_direct(data):
 
     return {
         "setup_time": setup_time,
+        "size": get_problem_size(data),
         "status": status,
         "solve_time": solve_time,
         "num_iters": num_iters,
@@ -188,55 +187,49 @@ def _solve_cuclarabel_direct(data):
     }
 
 
+def solve_clarabel_direct(data):
+    P = data.P.tocsc()
+    q = data.c
+    A = sp.vstack((data.A, data.G)).tocsc()
+    b = np.concatenate((data.b, data.h), axis=0)
+    cones = [
+        clarabel.ZeroConeT(data.p),
+        clarabel.NonnegativeConeT(data.l),
+    ]
+    if data.nsoc > 0:
+        raise NotImplementedError(
+            "Direct interface for Clarabel with SOCPs not yet implemented"
+        )
+
+    settings = clarabel.DefaultSettings()
+    settings.verbose = True
+    settings.tol_gap_abs = 1e-7
+    settings.tol_gap_rel = 1e-7
+    settings.tol_feas = 1e-7
+    # settings.direct_solve_method = "qdldl"
+
+    solver = clarabel.DefaultSolver(P, q, A, b, cones, settings)
+    sol = solver.solve()
+    return {
+        "setup_time": 0,
+        "size": get_problem_size(data),
+        "status": sol.status,
+        "solve_time": sol.solve_time,
+        "num_iters": sol.iterations,
+        "objective": sol.obj_val,
+    }
+
+
 def run_clarabel(problem, algebra=None):
-    """
-    Solve a cvxpy problem using Clarabel solver.
 
-    Args:
-        problem: cvxpy Problem object or ProblemData struct
-        algebra: Optional string, if "cuda" uses CUCLARABEL solver
-
-    Returns:
-        dict with keys: setup_time, solve_time, num_iters, objective
-    """
-    # Check if problem is a ProblemData struct or cvxpy Problem
+    # Check if problem is ProblemData, call direct interface
     if isinstance(problem, ProblemData):
-        # Direct interface for cuclarabel
         if algebra == "cuda":
-            return _solve_cuclarabel_direct(problem)
+            return solve_cuclarabel_direct(problem)
         else:
-            P = problem.P.tocsc()
-            q = problem.c
-            A = sp.vstack((problem.A, problem.G)).tocsc()
-            b = np.concatenate((problem.b, problem.h), axis=0)
-            cones = [
-                clarabel.ZeroConeT(problem.p),
-                clarabel.NonnegativeConeT(problem.l),
-            ]
-            if problem.nsoc > 0:
-                raise NotImplementedError(
-                    "Direct interface for Clarabel with SOCPs not yet implemented"
-                )
+            return solve_clarabel_direct(problem)
 
-            settings = clarabel.DefaultSettings()
-            settings.verbose = True
-            settings.tol_gap_abs = 1e-7
-            settings.tol_gap_rel = 1e-7
-            settings.tol_feas = 1e-7
-            settings.direct_solve_method = "qdldl"
-
-            solver = clarabel.DefaultSolver(P, q, A, b, cones, settings)
-            sol = solver.solve()
-            breakpoint()
-            return {
-                "setup_time": 0,
-                "status": sol.status,
-                "solve_time": sol.solve_time,
-                "num_iters": sol.iterations,
-                "objective": sol.obj_val,
-            }
-
-    # Original cvxpy interface
+    # Call solvers via cvxpy interface
     if algebra == "cuda":
         problem.solve(verbose=False, solver="CUCLARABEL")
     else:
@@ -248,33 +241,18 @@ def run_clarabel(problem, algebra=None):
         else problem.solver_stats.setup_time
     )
     solve_time = problem.solver_stats.solve_time
-    num_iters = (
-        problem.solver_stats.num_iters
-        if hasattr(problem.solver_stats, "num_iters")
-        else None
-    )
-    objective = problem.value
 
     return {
         "setup_time": setup_time,
+        "size": get_problem_size(problem),
         "status": problem.status,
         "solve_time": solve_time,
-        "num_iters": num_iters,
-        "objective": objective,
+        "num_iters": problem.solver_stats.num_iters,
+        "objective": problem.value,
     }
 
 
 def run_qoco(problem, algebra=None):
-    """
-    Solve a cvxpy problem or direct data using QOCO solver.
-
-    Args:
-        problem: cvxpy Problem object or ProblemData struct
-        algebra: Optional string, if "cuda" uses CUDA algebra backend
-
-    Returns:
-        dict with keys: setup_time, solve_time, num_iters, objective
-    """
     # Check if problem is a ProblemData struct or cvxpy Problem
     if isinstance(problem, ProblemData):
         # Direct interface
@@ -299,13 +277,14 @@ def run_qoco(problem, algebra=None):
 
         return {
             "setup_time": res.setup_time_sec,
+            "size": get_problem_size(problem),
             "status": res.status,
             "solve_time": res.solve_time_sec,
             "num_iters": res.iters,
             "objective": res.obj,
         }
 
-    # Original cvxpy interface
+    # Call solvers via cvxpy interface
     if algebra == "cuda":
         problem.solve(verbose=True, solver="QOCO", algebra="cuda")
     else:
@@ -326,6 +305,7 @@ def run_qoco(problem, algebra=None):
 
     return {
         "setup_time": setup_time,
+        "size": get_problem_size(problem),
         "status": problem.status,
         "solve_time": solve_time,
         "num_iters": num_iters,
@@ -333,17 +313,11 @@ def run_qoco(problem, algebra=None):
     }
 
 
+# Can only solve cvxpy problems, not handparsed ones.
 def run_mosek(problem):
-    """
-    Solve a cvxpy problem using MOSEK solver.
-
-    Args:
-        problem: cvxpy Problem object
-
-    Returns:
-        dict with keys: setup_time, solve_time, num_iters, objective
-    """
-    problem.solve(verbose=False, solver="MOSEK")
+    if isinstance(problem, ProblemData):
+        raise NotImplementedError("Mosek cannot solve with ProblemData")
+    problem.solve(verbose=True, solver="MOSEK")
 
     setup_time = (
         0
@@ -360,6 +334,7 @@ def run_mosek(problem):
 
     return {
         "setup_time": setup_time,
+        "size": get_problem_size(problem),
         "status": problem.status,
         "solve_time": solve_time,
         "num_iters": num_iters,
