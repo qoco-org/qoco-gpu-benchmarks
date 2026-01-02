@@ -6,6 +6,7 @@ import numpy as np
 # Enable LaTeX rendering
 plt.rcParams["text.usetex"] = True
 plt.rcParams["font.family"] = "serif"
+SOLVED_STRINGS = ["QOCO_SOLVED", "SOLVED"]
 
 
 def plot_portfolio_results():
@@ -39,6 +40,9 @@ def plot_portfolio_results():
 
         # Read CSV
         df = pd.read_csv(csv_path)
+
+        # Only plot data where the solver succeeds
+        df = df[df["status"].isin(SOLVED_STRINGS)]
 
         # Filter out rows with None/NaN values
         df = df.dropna(subset=["size", "setup_time", "solve_time"])

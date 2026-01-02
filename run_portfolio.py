@@ -36,9 +36,9 @@ def run_portfolio_benchmarks():
 
     k_values = [10, 50, 100, 200, 500, 1000, 1500]
     solvers = {
-        # "qoco": lambda prob: run_qoco(prob, algebra=None),
+        "qoco": lambda prob: run_qoco(prob, algebra=None),
         "qoco_cuda": lambda prob: run_qoco(prob, algebra="cuda"),
-        # "clarabel": lambda prob: run_clarabel(prob, algebra=None),
+        "clarabel": lambda prob: run_clarabel(prob, algebra=None),
         "cuclarabel": lambda prob: run_clarabel(prob, algebra="cuda"),
         # "mosek": lambda prob: run_mosek(prob),
     }
@@ -58,7 +58,7 @@ def run_portfolio_benchmarks():
         problem_size = get_problem_size(prob)
 
         # For k >= 1000, only run CUDA solvers
-        if k > 500:
+        if k > 1000:
             active_solvers = {
                 name: func
                 for name, func in solvers.items()
@@ -85,6 +85,7 @@ def run_portfolio_benchmarks():
                 results[solver_name].append(
                     {
                         "size": problem_size,
+                        "status": None,
                         "setup_time": None,
                         "solve_time": None,
                         "num_iters": None,
@@ -102,7 +103,14 @@ def run_portfolio_benchmarks():
         df = pd.DataFrame(solver_results)
 
         # Select columns in desired order
-        columns = ["size", "setup_time", "solve_time", "num_iters", "objective"]
+        columns = [
+            "size",
+            "status",
+            "setup_time",
+            "solve_time",
+            "num_iters",
+            "objective",
+        ]
         # Only include columns that exist in the dataframe
         columns = [col for col in columns if col in df.columns]
 

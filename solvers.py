@@ -3,6 +3,7 @@ from typing import Any
 import qoco
 import scipy.sparse as sp
 import numpy as np
+import clarabel
 
 
 @dataclass
@@ -42,12 +43,12 @@ def dims_to_solver_cones(jl, cone_dims):
 
 def _solve_cuclarabel_direct(data):
     """Solve using cuclarabel direct interface.
-    
+
     Parameters
     ----------
     data : ProblemData
         Problem data structure.
-    
+
     Returns
     -------
     dict with keys: setup_time, solve_time, num_iters, objective
@@ -55,13 +56,13 @@ def _solve_cuclarabel_direct(data):
     import cupy
     from cupyx.scipy.sparse import csr_matrix as cucsr_matrix
     from juliacall import Main as jl
-    
-    jl.seval('using Clarabel, LinearAlgebra, SparseArrays')
-    jl.seval('using CUDA, CUDA.CUSPARSE')
+
+    jl.seval("using Clarabel, LinearAlgebra, SparseArrays")
+    jl.seval("using CUDA, CUDA.CUSPARSE")
 
     # Combine A and G: [A; G]
     if data.A is not None and data.G is not None:
-        A_combined = sp.vstack([data.A, data.G], format='csr')
+        A_combined = sp.vstack([data.A, data.G], format="csr")
     elif data.A is not None:
         A_combined = data.A.tocsr()
     elif data.G is not None:
@@ -85,7 +86,7 @@ def _solve_cuclarabel_direct(data):
         P = sp.triu(data.P).tocsr()
     else:
         P = sp.csr_matrix((data.n, data.n))
-    
+
     q = data.c
 
     # Convert to GPU arrays
@@ -97,17 +98,29 @@ def _solve_cuclarabel_direct(data):
     # Convert P to Julia
     if Pgpu.nnz != 0:
         jl.P = jl.Clarabel.cupy_to_cucsrmat(
-            jl.Float64, int(Pgpu.data.data.ptr), int(Pgpu.indices.data.ptr),
-            int(Pgpu.indptr.data.ptr), *Pgpu.shape, Pgpu.nnz)
+            jl.Float64,
+            int(Pgpu.data.data.ptr),
+            int(Pgpu.indices.data.ptr),
+            int(Pgpu.indptr.data.ptr),
+            *Pgpu.shape,
+            Pgpu.nnz,
+        )
     else:
-        jl.seval(f"""
+        jl.seval(
+            f"""
         P = CuSparseMatrixCSR(sparse(Float64[], Float64[], Float64[], {data.n}, {data.n}))
-        """)
-    
+        """
+        )
+
     jl.q = jl.Clarabel.cupy_to_cuvector(jl.Float64, int(qgpu.data.ptr), qgpu.size)
     jl.A = jl.Clarabel.cupy_to_cucsrmat(
-        jl.Float64, int(Agpu.data.data.ptr), int(Agpu.indices.data.ptr),
-        int(Agpu.indptr.data.ptr), *Agpu.shape, Agpu.nnz)
+        jl.Float64,
+        int(Agpu.data.data.ptr),
+        int(Agpu.indices.data.ptr),
+        int(Agpu.indptr.data.ptr),
+        *Agpu.shape,
+        Agpu.nnz,
+    )
     jl.b = jl.Clarabel.cupy_to_cuvector(jl.Float64, int(bgpu.data.ptr), bgpu.size)
 
     # Set up cone dimensions
@@ -119,17 +132,19 @@ def _solve_cuclarabel_direct(data):
             self.zero = zero
             self.nonneg = nonneg
             self.soc = soc
-    
+
     cone_dims = ConeDims(zero=data.p, nonneg=data.l, soc=data.q)
     dims_to_solver_cones(jl, cone_dims)
 
     # Solve
-    jl.seval("""
+    jl.seval(
+        """
     settings = Clarabel.Settings(direct_solve_method = :cudss, tol_gap_abs=1e-7, tol_gap_rel=1e-7, tol_feas=1e-7)
     solver   = Clarabel.Solver(settings)
     solver   = Clarabel.setup!(solver, P,q,A,b,cones)
     Clarabel.solve!(solver)
-    """)
+    """
+    )
 
     # Extract results
     # Note: Adjust these based on actual Clarabel result structure
@@ -137,10 +152,12 @@ def _solve_cuclarabel_direct(data):
     solve_time = float(jl.seval("solver.info.solve_time"))
     num_iters = int(jl.seval("solver.solution.iterations"))
     objective = float(jl.seval("solver.solution.obj_val"))
+    status = str(jl.seval("solver.solution.status"))
 
     # Free Julia CUDA arrays and clear references
     # Clear solver and all Julia variables that hold CUDA arrays
-    jl.seval("""
+    jl.seval(
+        """
     solver = nothing
     P = nothing
     q = nothing
@@ -152,8 +169,9 @@ def _solve_cuclarabel_direct(data):
     GC.gc()
     # Also trigger CUDA memory pool cleanup
     CUDA.reclaim()
-    """)
-    
+    """
+    )
+
     # All Julia code is complete and CUDA arrays freed - now safe to free CuPy arrays and matrices
     del Pgpu
     del qgpu
@@ -163,6 +181,7 @@ def _solve_cuclarabel_direct(data):
 
     return {
         "setup_time": setup_time,
+        "status": status,
         "solve_time": solve_time,
         "num_iters": num_iters,
         "objective": objective,
@@ -186,7 +205,36 @@ def run_clarabel(problem, algebra=None):
         if algebra == "cuda":
             return _solve_cuclarabel_direct(problem)
         else:
-            raise NotImplementedError("Direct interface for Clarabel (non-CUDA) not yet implemented")
+            P = problem.P.tocsc()
+            q = problem.c
+            A = sp.vstack((problem.A, problem.G)).tocsc()
+            b = np.concatenate((problem.b, problem.h), axis=0)
+            cones = [
+                clarabel.ZeroConeT(problem.p),
+                clarabel.NonnegativeConeT(problem.l),
+            ]
+            if problem.nsoc > 0:
+                raise NotImplementedError(
+                    "Direct interface for Clarabel with SOCPs not yet implemented"
+                )
+
+            settings = clarabel.DefaultSettings()
+            settings.verbose = True
+            settings.tol_gap_abs = 1e-7
+            settings.tol_gap_rel = 1e-7
+            settings.tol_feas = 1e-7
+            settings.direct_solve_method = "qdldl"
+
+            solver = clarabel.DefaultSolver(P, q, A, b, cones, settings)
+            sol = solver.solve()
+            breakpoint()
+            return {
+                "setup_time": 0,
+                "status": sol.status,
+                "solve_time": sol.solve_time,
+                "num_iters": sol.iterations,
+                "objective": sol.obj_val,
+            }
 
     # Original cvxpy interface
     if algebra == "cuda":
@@ -209,6 +257,7 @@ def run_clarabel(problem, algebra=None):
 
     return {
         "setup_time": setup_time,
+        "status": problem.status,
         "solve_time": solve_time,
         "num_iters": num_iters,
         "objective": objective,
@@ -250,6 +299,7 @@ def run_qoco(problem, algebra=None):
 
         return {
             "setup_time": res.setup_time_sec,
+            "status": res.status,
             "solve_time": res.solve_time_sec,
             "num_iters": res.iters,
             "objective": res.obj,
@@ -276,6 +326,7 @@ def run_qoco(problem, algebra=None):
 
     return {
         "setup_time": setup_time,
+        "status": problem.status,
         "solve_time": solve_time,
         "num_iters": num_iters,
         "objective": objective,
@@ -309,6 +360,7 @@ def run_mosek(problem):
 
     return {
         "setup_time": setup_time,
+        "status": problem.status,
         "solve_time": solve_time,
         "num_iters": num_iters,
         "objective": objective,
