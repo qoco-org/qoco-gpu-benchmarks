@@ -2,12 +2,13 @@ import pandas as pd
 import os
 
 
-def write_results(results):
+def write_results(results, name):
     for solver_name, solver_results in results.items():
-        csv_filename = os.path.join("portfolio", f"{solver_name}_results.csv")
+        csv_filename = os.path.join(name, f"{solver_name}_results.csv")
         print(f"Writing {csv_filename}...")
         df = pd.DataFrame(solver_results)
         columns = [
+            "name",
             "size",
             "status",
             "setup_time",

@@ -14,6 +14,8 @@ SOLVERS = {
     "mosek": lambda prob: run_mosek(prob),
 }
 
+VERBOSE = True
+
 
 def get_problem_size(prob):
     """Calculate problem size as nnz(A) + nnz(P)"""
@@ -181,7 +183,6 @@ def solve_cuclarabel_direct(data):
 
     return {
         "setup_time": setup_time,
-        "size": get_problem_size(data),
         "status": status,
         "solve_time": solve_time,
         "num_iters": num_iters,
@@ -204,7 +205,7 @@ def solve_clarabel_direct(data):
         )
 
     settings = clarabel.DefaultSettings()
-    settings.verbose = False
+    settings.verbose = VERBOSE
     settings.tol_gap_abs = 1e-7
     settings.tol_gap_rel = 1e-7
     settings.tol_feas = 1e-7
@@ -214,7 +215,6 @@ def solve_clarabel_direct(data):
     sol = solver.solve()
     return {
         "setup_time": 0,
-        "size": get_problem_size(data),
         "status": sol.status,
         "solve_time": sol.solve_time,
         "num_iters": sol.iterations,
@@ -233,9 +233,9 @@ def run_clarabel(problem, algebra=None):
 
     # Call solvers via cvxpy interface
     if algebra == "cuda":
-        problem.solve(verbose=False, solver="CUCLARABEL")
+        problem.solve(verbose=VERBOSE, solver="CUCLARABEL")
     else:
-        problem.solve(verbose=False, solver="CLARABEL")
+        problem.solve(verbose=VERBOSE, solver="CLARABEL")
 
     setup_time = (
         0
@@ -246,7 +246,6 @@ def run_clarabel(problem, algebra=None):
 
     return {
         "setup_time": setup_time,
-        "size": get_problem_size(problem),
         "status": problem.status,
         "solve_time": solve_time,
         "num_iters": problem.solver_stats.num_iters,
@@ -273,13 +272,12 @@ def run_qoco(problem, algebra=None):
             problem.l,
             problem.nsoc,
             problem.q,
-            verbose=False,
+            verbose=VERBOSE,
         )
         res = prob.solve()
 
         return {
             "setup_time": res.setup_time_sec,
-            "size": get_problem_size(problem),
             "status": res.status,
             "solve_time": res.solve_time_sec,
             "num_iters": res.iters,
@@ -288,9 +286,9 @@ def run_qoco(problem, algebra=None):
 
     # Call solvers via cvxpy interface
     if algebra == "cuda":
-        problem.solve(verbose=False, solver="QOCO", algebra="cuda")
+        problem.solve(verbose=VERBOSE, solver="QOCO", algebra="cuda")
     else:
-        problem.solve(verbose=False, solver="QOCO")
+        problem.solve(verbose=VERBOSE, solver="QOCO")
 
     setup_time = (
         0
@@ -307,7 +305,6 @@ def run_qoco(problem, algebra=None):
 
     return {
         "setup_time": setup_time,
-        "size": get_problem_size(problem),
         "status": problem.status,
         "solve_time": solve_time,
         "num_iters": num_iters,
@@ -321,7 +318,16 @@ def run_mosek(problem):
         raise NotImplementedError("Mosek cannot solve with ProblemData")
 
     try:
-        problem.solve(verbose=False, solver="MOSEK")
+        problem.solve(
+            verbose=VERBOSE,
+            solver="MOSEK",
+            mosek_params={
+                "MSK_DPAR_INTPNT_CO_TOL_PFEAS": 1e-7,
+                "MSK_DPAR_INTPNT_CO_TOL_DFEAS": 1e-7,
+                "MSK_DPAR_INTPNT_CO_TOL_REL_GAP": 1e-7,
+                "MSK_DPAR_INTPNT_CO_TOL_MU_RED": 1e-7,
+            },
+        )
 
         setup_time = (
             0
@@ -338,7 +344,6 @@ def run_mosek(problem):
 
         return {
             "setup_time": setup_time,
-            "size": get_problem_size(problem),
             "status": problem.status,
             "solve_time": solve_time,
             "num_iters": num_iters,
@@ -347,7 +352,6 @@ def run_mosek(problem):
     except:
         return {
             "setup_time": None,
-            "size": get_problem_size(problem),
             "status": None,
             "solve_time": None,
             "num_iters": None,

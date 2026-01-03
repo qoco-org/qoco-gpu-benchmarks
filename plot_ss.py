@@ -8,14 +8,11 @@ plt.rcParams["font.family"] = "serif"
 SOLVED_STRINGS = ["QOCO_SOLVED", "SOLVED", "Solved", "optimal"]
 
 
-def plot_suitesparse_results():
-    """
-    Plot runtime (setup_time + solve_time) vs size for all solvers.
-    """
-    suitesparse_dir = "suitesparse"
+def plot_huber_results():
+    huber_dir = "huber"
 
-    if not os.path.exists(suitesparse_dir):
-        print(f"Error: {suitesparse_dir} directory does not exist!")
+    if not os.path.exists(huber_dir):
+        print(f"Error: {huber_dir} directory does not exist!")
         return
 
     # Solver names and their display names (using LaTeX formatting)
@@ -31,7 +28,7 @@ def plot_suitesparse_results():
     plt.figure(figsize=(10, 6))
 
     for solver_name, display_name in solvers.items():
-        csv_path = os.path.join(suitesparse_dir, f"{solver_name}_results.csv")
+        csv_path = os.path.join(huber_dir, f"{solver_name}_results.csv")
 
         if not os.path.exists(csv_path):
             print(f"Warning: {csv_path} not found, skipping...")
@@ -57,24 +54,25 @@ def plot_suitesparse_results():
         df = df.sort_values("size")
 
         # Plot
-        plt.scatter(
+        plt.plot(
             df["size"],
             df["runtime"],
             marker="o",
             label=display_name,
             linewidth=2,
+            markersize=6,
         )
 
     plt.xlabel(r"Problem Size $\mathrm{nnz}(A) + \mathrm{nnz}(P)$", fontsize=12)
     plt.ylabel(r"Runtime (seconds)", fontsize=12)
-    plt.title(r"SuiteSparse: Runtime vs Problem Size", fontsize=14)
+    plt.title(r"Huber: Runtime vs Problem Size", fontsize=14)
     plt.legend(fontsize=10)
     plt.grid(True, alpha=0.3)
     plt.xscale("log")
     plt.yscale("log")
 
     # Save plot
-    output_path = os.path.join(suitesparse_dir, "runtime_vs_size.png")
+    output_path = os.path.join(huber_dir, "runtime_vs_size.png")
     plt.savefig(output_path, dpi=300, bbox_inches="tight")
     print(f"Plot saved to {output_path}")
 
@@ -82,4 +80,4 @@ def plot_suitesparse_results():
 
 
 if __name__ == "__main__":
-    plot_suitesparse_results()
+    plot_huber_results()
