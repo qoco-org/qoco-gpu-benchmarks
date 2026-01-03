@@ -1,6 +1,7 @@
 import pandas as pd
 import os
 
+
 def write_results(results):
     for solver_name, solver_results in results.items():
         csv_filename = os.path.join("portfolio", f"{solver_name}_results.csv")

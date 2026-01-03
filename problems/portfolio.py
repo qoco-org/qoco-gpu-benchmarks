@@ -5,6 +5,7 @@ from solvers import ProblemData
 
 
 def portfolio_cvxpy(k):
+    np.random.seed(42)
     n = 100 * k
     F = sparse.random(n, k, density=0.5, data_rvs=np.random.randn, format="csc")
     D = sparse.diags(np.random.rand(n) * np.sqrt(k), format="csc")
@@ -24,6 +25,7 @@ def portfolio_cvxpy(k):
 
 
 def portfolio_handparsed(k):
+    np.random.seed(42)
     n = 100 * k
     F = sparse.random(n, k, density=0.5, data_rvs=np.random.randn, format="csc")
     D = sparse.diags(np.random.rand(n) * np.sqrt(k), format="csc")

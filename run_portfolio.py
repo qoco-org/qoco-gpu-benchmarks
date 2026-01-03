@@ -8,10 +8,7 @@ from utils import write_results
 
 def run_portfolio_benchmarks():
     os.makedirs("portfolio", exist_ok=True)
-
-    np.random.seed(42)
-
-    k_values = [10, 50, 100, 200, 500, 1000, 1500]
+    k_values = [10, 50]
 
     # Dict for results
     results = {solver_name: [] for solver_name in SOLVERS.keys()}
