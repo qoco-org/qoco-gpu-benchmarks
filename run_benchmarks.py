@@ -3,30 +3,36 @@ from typing import Any
 import os
 from problems.portfolio import *
 from problems.huber import *
+from problems.group_lasso import *
 from solvers import SOLVERS, get_problem_size
 from utils import write_results
 
-PROBLEMS = ["portfolio", "huber"]
+PROBLEMS = ["portfolio", "huber", "group_lasso"]
 
 PROB_HANDPARSED = {
     "portfolio": portfolio_handparsed,
     "huber": huber_handparsed,
+    "group_lasso": group_lasso_handparsed,
 }
 
 PROB_CVXPY = {
     "portfolio": portfolio_cvxpy,
     "huber": huber_cvxpy,
+    "group_lasso": group_lasso_cvxpy,
 }
 
 PROB_SIZES = {
     "portfolio": [10, 50, 100, 200, 500, 900, 1300, 1800],
     "huber": [50, 200, 500, 1000, 2000, 4000, 6000, 10000],
+    "group_lasso": [5, 10, 20, 50, 100, 200],
 }
 
 MAX_CPU_SIZE = {
     "portfolio": 900,
     "huber": 4000,
+    "group_lasso": 50,
 }
+
 
 def run_benchmarks(prob_name):
     os.makedirs(prob_name, exist_ok=True)
@@ -76,6 +82,7 @@ def run_benchmarks(prob_name):
 
     write_results(results, prob_name)
 
+
 def main():
     parser = argparse.ArgumentParser(description="Run benchmark problems")
     parser.add_argument(
@@ -96,7 +103,6 @@ def main():
                 f"Available options: {PROBLEMS + ['all']}"
             )
         run_benchmarks(args.problems)
-
 
 
 if __name__ == "__main__":

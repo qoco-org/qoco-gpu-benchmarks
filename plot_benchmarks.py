@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 plt.rcParams["text.usetex"] = True
 plt.rcParams["font.family"] = "serif"
 SOLVED_STRINGS = ["QOCO_SOLVED", "SOLVED", "Solved", "optimal"]
-PROBLEMS = ["portfolio", "huber"]
+PROBLEMS = ["portfolio", "huber", "group_lasso"]
 
 
 def plot_benchmark(prob_name):
@@ -62,7 +62,7 @@ def plot_benchmark(prob_name):
             markersize=6,
         )
 
-    plt.xlabel(r"Problem Size $\mathrm{nnz}(A) + \mathrm{nnz}(P)$", fontsize=12)
+    plt.xlabel(r"Problem Size", fontsize=12)
     plt.ylabel(r"Runtime (seconds)", fontsize=12)
     plt.title(prob_name, fontsize=14)
     plt.legend(fontsize=10)
@@ -84,7 +84,7 @@ def main():
         "--problems",
         required=True,
         type=str,
-        help="Problem name (e.g. huber) or 'all'",
+        help="Problem name (e.g. portfolio, huber) or 'all'",
     )
     args = parser.parse_args()
 
@@ -98,7 +98,6 @@ def main():
                 f"Available options: {PROBLEMS + ['all']}"
             )
         plot_benchmark(args.problems)
-
 
 
 if __name__ == "__main__":

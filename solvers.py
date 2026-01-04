@@ -14,7 +14,7 @@ SOLVERS = {
     "mosek": lambda prob: run_mosek(prob),
 }
 
-VERBOSE = False
+VERBOSE = True
 
 
 def get_problem_size(prob):
@@ -199,10 +199,8 @@ def solve_clarabel_direct(data):
         clarabel.ZeroConeT(data.p),
         clarabel.NonnegativeConeT(data.l),
     ]
-    if data.nsoc > 0:
-        raise NotImplementedError(
-            "Direct interface for Clarabel with SOCPs not yet implemented"
-        )
+    for dim in data.q:
+        cones.append(clarabel.SecondOrderConeT(dim))
 
     settings = clarabel.DefaultSettings()
     settings.verbose = VERBOSE
