@@ -19,13 +19,13 @@ PROB_CVXPY = {
 }
 
 PROB_SIZES = {
-    "portfolio": [10, 50],
+    "portfolio": [10, 50, 100, 200, 500, 1000, 1500],
     "huber": [50, 200, 500, 1000, 2000, 4000, 6000, 8000, 10000],
 }
 
 MAX_CPU_SIZE = {
     "portfolio": 1000,
-    "huber": 2000,
+    "huber": 4000,
 }
 
 def run_benchmarks(prob_name):

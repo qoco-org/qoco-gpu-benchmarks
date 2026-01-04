@@ -1,4 +1,4 @@
-import os
+import os, argparse
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -6,16 +6,12 @@ import matplotlib.pyplot as plt
 plt.rcParams["text.usetex"] = True
 plt.rcParams["font.family"] = "serif"
 SOLVED_STRINGS = ["QOCO_SOLVED", "SOLVED", "Solved", "optimal"]
+PROBLEMS = ["portfolio", "huber"]
 
 
-def plot_portfolio_results():
-    """
-    Plot runtime (setup_time + solve_time) vs size for all solvers.
-    """
-    portfolio_dir = "portfolio"
-
-    if not os.path.exists(portfolio_dir):
-        print(f"Error: {portfolio_dir} directory does not exist!")
+def plot_benchmark(prob_name):
+    if not os.path.exists(prob_name):
+        print(f"Error: {prob_name} directory does not exist!")
         return
 
     # Solver names and their display names (using LaTeX formatting)
@@ -31,7 +27,7 @@ def plot_portfolio_results():
     plt.figure(figsize=(10, 6))
 
     for solver_name, display_name in solvers.items():
-        csv_path = os.path.join(portfolio_dir, f"{solver_name}_results.csv")
+        csv_path = os.path.join(prob_name, f"{solver_name}_results.csv")
 
         if not os.path.exists(csv_path):
             print(f"Warning: {csv_path} not found, skipping...")
@@ -68,19 +64,42 @@ def plot_portfolio_results():
 
     plt.xlabel(r"Problem Size $\mathrm{nnz}(A) + \mathrm{nnz}(P)$", fontsize=12)
     plt.ylabel(r"Runtime (seconds)", fontsize=12)
-    plt.title(r"Portfolio Optimization: Runtime vs Problem Size", fontsize=14)
+    plt.title(prob_name, fontsize=14)
     plt.legend(fontsize=10)
     plt.grid(True, alpha=0.3)
     plt.xscale("log")
     plt.yscale("log")
 
     # Save plot
-    output_path = os.path.join(portfolio_dir, "runtime_vs_size.png")
+    output_path = os.path.join(prob_name, "runtime_vs_size.png")
     plt.savefig(output_path, dpi=300, bbox_inches="tight")
     print(f"Plot saved to {output_path}")
 
     plt.show()
 
 
+def main():
+    parser = argparse.ArgumentParser(description="Plot benchmark results")
+    parser.add_argument(
+        "--problems",
+        required=True,
+        type=str,
+        help="Problem name (e.g. huber) or 'all'",
+    )
+    args = parser.parse_args()
+
+    if args.problems == "all":
+        for prob in PROBLEMS:
+            plot_benchmark(prob)
+    else:
+        if args.problems not in PROBLEMS:
+            raise ValueError(
+                f"Unknown problem '{args.problems}'. "
+                f"Available options: {PROBLEMS + ['all']}"
+            )
+        plot_benchmark(args.problems)
+
+
+
 if __name__ == "__main__":
-    plot_portfolio_results()
+    main()

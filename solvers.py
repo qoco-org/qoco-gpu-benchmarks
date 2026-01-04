@@ -14,7 +14,7 @@ SOLVERS = {
     "mosek": lambda prob: run_mosek(prob),
 }
 
-VERBOSE = True
+VERBOSE = False
 
 
 def get_problem_size(prob):
