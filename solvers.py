@@ -9,12 +9,12 @@ import cvxpy as cp
 SOLVERS = {
     "qoco": lambda prob: run_qoco(prob, algebra=None),
     "qoco_cuda": lambda prob: run_qoco(prob, algebra="cuda"),
-    "clarabel": lambda prob: run_clarabel(prob, algebra=None),
+    # "clarabel": lambda prob: run_clarabel(prob, algebra=None),
     "cuclarabel": lambda prob: run_clarabel(prob, algebra="cuda"),
-    "mosek": lambda prob: run_mosek(prob),
+    # "mosek": lambda prob: run_mosek(prob),
 }
 
-VERBOSE = True
+VERBOSE = False
 
 
 def get_problem_size(prob):

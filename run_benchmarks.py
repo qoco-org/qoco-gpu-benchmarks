@@ -6,6 +6,7 @@ from problems.huber import *
 from problems.group_lasso import *
 from solvers import SOLVERS, get_problem_size
 from utils import write_results
+from memory_profiler import profile
 
 PROBLEMS = ["portfolio", "huber", "group_lasso"]
 
@@ -24,16 +25,16 @@ PROB_CVXPY = {
 PROB_SIZES = {
     "portfolio": [10, 50, 100, 200, 500, 900, 1300, 1800],
     "huber": [50, 200, 500, 1000, 2000, 4000, 6000, 10000],
-    "group_lasso": [5, 10, 20, 50, 100, 200],
+    "group_lasso": [5, 10, 20, 50, 100, 200, 450, 750],
 }
 
 MAX_CPU_SIZE = {
     "portfolio": 900,
     "huber": 4000,
-    "group_lasso": 50,
+    "group_lasso": 450,
 }
 
-
+# @profile
 def run_benchmarks(prob_name):
     os.makedirs(prob_name, exist_ok=True)
     n_values = PROB_SIZES[prob_name]
@@ -50,7 +51,7 @@ def run_benchmarks(prob_name):
     for n in n_values:
         print(f"Solving {prob_name} problem for n={n}...")
         prob = PROB_HANDPARSED[prob_name](n)
-        prob_cvxpy = PROB_CVXPY[prob_name](n)
+        # prob_cvxpy = PROB_CVXPY[prob_name](n)
         problem_size = get_problem_size(prob)
 
         # For n > max_cpu_size, only run GPU solvers
@@ -71,9 +72,9 @@ def run_benchmarks(prob_name):
                 print(f"    Warming up {solver_name} (CUDA initialization)...")
                 _ = solver_func(prob)
                 cuda_warmed_up.add(solver_name)
-
             if solver_name == "mosek":
-                stats = solver_func(prob_cvxpy)
+                raise NotImplementedError("Cannot use mosek with cvxpy due to memory/performance issues.")
+                # stats = solver_func(prob_cvxpy)
             else:
                 stats = solver_func(prob)
             stats["size"] = problem_size
