@@ -25,14 +25,15 @@ PROB_CVXPY = {
 PROB_SIZES = {
     "portfolio": [10, 50, 100, 200, 500, 900, 1300, 1800],
     "huber": [50, 200, 500, 1000, 2000, 4000, 6000, 10000],
-    "group_lasso": [5, 10, 20, 50, 100, 200, 450, 750],
+    "group_lasso": [5, 20, 50, 100, 150, 300, 450, 750], # Any larger than 750 and CuClarabel runs out of memory
 }
 
 MAX_CPU_SIZE = {
     "portfolio": 900,
     "huber": 4000,
-    "group_lasso": 450,
+    "group_lasso": 150,
 }
+
 
 # @profile
 def run_benchmarks(prob_name):
@@ -73,7 +74,9 @@ def run_benchmarks(prob_name):
                 _ = solver_func(prob)
                 cuda_warmed_up.add(solver_name)
             if solver_name == "mosek":
-                raise NotImplementedError("Cannot use mosek with cvxpy due to memory/performance issues.")
+                raise NotImplementedError(
+                    "Cannot use mosek with cvxpy due to memory/performance issues."
+                )
                 # stats = solver_func(prob_cvxpy)
             else:
                 stats = solver_func(prob)

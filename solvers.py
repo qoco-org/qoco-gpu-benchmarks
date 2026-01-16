@@ -5,16 +5,20 @@ import scipy.sparse as sp
 import numpy as np
 import clarabel
 import cvxpy as cp
+import gurobipy as gp
+from gurobipy import GRB
 
 SOLVERS = {
     "qoco": lambda prob: run_qoco(prob, algebra=None),
     "qoco_cuda": lambda prob: run_qoco(prob, algebra="cuda"),
     # "clarabel": lambda prob: run_clarabel(prob, algebra=None),
     "cuclarabel": lambda prob: run_clarabel(prob, algebra="cuda"),
+    "gurobi": lambda prob: run_gurobi(prob),
     # "mosek": lambda prob: run_mosek(prob),
 }
 
-VERBOSE = False
+VERBOSE = True
+TOLERANCE = 1e-7
 
 
 def get_problem_size(prob):
@@ -147,12 +151,17 @@ def solve_cuclarabel_direct(data):
     dims_to_solver_cones(jl, cone_dims)
 
     jl.seval(
+        f"""
+        settings = Clarabel.Settings(
+            direct_solve_method = :cudss,
+            tol_gap_abs = {TOLERANCE},
+            tol_gap_rel = {TOLERANCE},
+            tol_feas    = {TOLERANCE}
+        )
+        solver = Clarabel.Solver(settings)
+        solver = Clarabel.setup!(solver, P, q, A, b, cones)
+        Clarabel.solve!(solver)
         """
-    settings = Clarabel.Settings(direct_solve_method = :cudss, tol_gap_abs=1e-7, tol_gap_rel=1e-7, tol_feas=1e-7)
-    solver   = Clarabel.Solver(settings)
-    solver   = Clarabel.setup!(solver, P,q,A,b,cones)
-    Clarabel.solve!(solver)
-    """
     )
 
     setup_time = 0
@@ -190,6 +199,96 @@ def solve_cuclarabel_direct(data):
     }
 
 
+def solve_gurobi_direct(data):
+    model = gp.Model("SOCP")
+    model.setParam("OutputFlag", VERBOSE)
+    model.setParam("BarConvTol", TOLERANCE)
+    model.setParam("BarQCPConvTol", TOLERANCE)
+    model.setParam("FeasibilityTol", TOLERANCE)
+    model.setParam("OptimalityTol", TOLERANCE)
+
+    n = data.n
+    x = model.addMVar(n, lb=-GRB.INFINITY)
+
+    # -------------------------
+    # Objective
+    # 0.5 x' P x + c' x
+    # -------------------------
+    P = data.P
+    c = data.c
+
+    model.setMObjective(0.5 * P, c, 0.0)
+
+    # -------------------------
+    # Equality constraints: A x = b
+    # -------------------------
+    if data.p > 0:
+        A = data.A
+        b = data.b
+        model.addMConstr(A, x, GRB.EQUAL, b)
+
+    # -------------------------
+    # Linear inequalities: G x <= h
+    # (Non-SOC rows only)
+    # -------------------------
+    G = data.G
+    h = data.h
+
+    if data.l > 0:
+        model.addMConstr(G[: data.l, :], x, GRB.LESS_EQUAL, h[: data.l])
+
+    # -------------------------
+    # Second-Order Cone Constraints
+    # -------------------------
+    row = data.l
+    for k in range(data.nsoc):
+        qk = data.q[k]
+
+        t = model.addVar(
+            obj=0,
+            name="soc_t_cone_%d" % (k),
+            vtype=gp.GRB.CONTINUOUS,
+            lb=0,
+            ub=gp.GRB.INFINITY,
+        )
+
+        u = model.addMVar(
+            qk - 1,
+            name="soc_x_cone_%d" % (k),
+            vtype=gp.GRB.CONTINUOUS,
+            lb=-gp.GRB.INFINITY,
+            ub=gp.GRB.INFINITY,
+        )
+
+        # Vector part
+        Gv = G[row + 1 : row + qk, :]
+        hv = h[row + 1 : row + qk]
+
+        # Scalar part
+        Gt = G[row, :]
+        ht = h[row]
+
+        model.addConstr(ht - Gt @ x == t)
+        model.addConstr(hv - Gv @ x == u)
+
+        # ||u||_2^2 <= t^2
+        model.addConstr(u @ u <= t * t)
+        row += qk
+
+    # -------------------------
+    # Solve
+    # -------------------------
+    model.optimize()
+    status = "optimal" if model.Status == 2 else model.Status
+    return {
+        "setup_time": 0.0,
+        "status": status,
+        "solve_time": model.Runtime,
+        "num_iters": model.BarIterCount,
+        "objective": model.ObjVal,
+    }
+
+
 def solve_clarabel_direct(data):
     P = data.P.tocsc()
     q = data.c
@@ -204,9 +303,9 @@ def solve_clarabel_direct(data):
 
     settings = clarabel.DefaultSettings()
     settings.verbose = VERBOSE
-    settings.tol_gap_abs = 1e-7
-    settings.tol_gap_rel = 1e-7
-    settings.tol_feas = 1e-7
+    settings.tol_gap_abs = TOLERANCE
+    settings.tol_gap_rel = TOLERANCE
+    settings.tol_feas = TOLERANCE
     # settings.direct_solve_method = "qdldl"
 
     solver = clarabel.DefaultSolver(P, q, A, b, cones, settings)
@@ -221,7 +320,6 @@ def solve_clarabel_direct(data):
 
 
 def run_clarabel(problem, algebra=None):
-
     # Check if problem is ProblemData, call direct interface
     if isinstance(problem, ProblemData):
         if algebra == "cuda":
@@ -310,6 +408,40 @@ def run_qoco(problem, algebra=None):
     }
 
 
+def run_gurobi(problem):
+    # Check if problem is a ProblemData struct or cvxpy Problem
+    if isinstance(problem, ProblemData):
+        # Direct interface
+        return solve_gurobi_direct(problem)
+
+    # Call solvers via cvxpy interface
+    problem.solve(
+        verbose=VERBOSE,
+        solver="GUROBI",
+        BarConvTol=TOLERANCE,
+        BarQCPConvTol=TOLERANCE,
+        FeasibilityTol=TOLERANCE,
+        OptimalityTol=TOLERANCE,
+    )
+
+    setup_time = problem.solver_stats.setup_time or 0
+    solve_time = problem.solver_stats.solve_time
+    num_iters = (
+        problem.solver_stats.num_iters
+        if hasattr(problem.solver_stats, "num_iters")
+        else None
+    )
+    objective = problem.value
+
+    return {
+        "setup_time": setup_time,
+        "status": problem.status,
+        "solve_time": solve_time,
+        "num_iters": num_iters,
+        "objective": objective,
+    }
+
+
 # Can only solve cvxpy problems, not handparsed ones.
 def run_mosek(problem):
     if isinstance(problem, ProblemData):
@@ -320,10 +452,10 @@ def run_mosek(problem):
             verbose=VERBOSE,
             solver="MOSEK",
             mosek_params={
-                "MSK_DPAR_INTPNT_CO_TOL_PFEAS": 1e-7,
-                "MSK_DPAR_INTPNT_CO_TOL_DFEAS": 1e-7,
-                "MSK_DPAR_INTPNT_CO_TOL_REL_GAP": 1e-7,
-                "MSK_DPAR_INTPNT_CO_TOL_MU_RED": 1e-7,
+                "MSK_DPAR_INTPNT_CO_TOL_PFEAS": TOLERANCE,
+                "MSK_DPAR_INTPNT_CO_TOL_DFEAS": TOLERANCE,
+                "MSK_DPAR_INTPNT_CO_TOL_REL_GAP": TOLERANCE,
+                "MSK_DPAR_INTPNT_CO_TOL_MU_RED": TOLERANCE,
             },
         )
 

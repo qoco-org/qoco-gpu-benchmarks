@@ -20,7 +20,8 @@ def plot_benchmark(prob_name):
         "qoco_cuda": r"\textsc{QOCO} (\textsc{GPU})",
         "clarabel": r"\textsc{Clarabel}",
         "cuclarabel": r"\textsc{Clarabel} (\textsc{GPU})",
-        "mosek": r"\textsc{MOSEK}",
+        "mosek": r"\textsc{Mosek}",
+        "gurobi": r"\textsc{Gurobi}",
     }
 
     # Read all CSV files and plot
