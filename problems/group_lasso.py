@@ -25,9 +25,8 @@ def group_lasso_cvxpy(ngroups):
     x = cp.Variable(n)
     con = [y == A @ x - b]
 
-    obj = cp.quad_form(y, np.eye(m))
-    for i in range(ngroups):
-        obj += lam * cp.norm(x[i * group_size : (i + 1) * group_size])
+    x_reshaped = cp.reshape(x, (ngroups, group_size), order='C')
+    obj = cp.sum_squares(y) + lam * cp.mixed_norm(x_reshaped, p=2, q=1)
     prob = cp.Problem(cp.Minimize(obj), con)
     return prob
 

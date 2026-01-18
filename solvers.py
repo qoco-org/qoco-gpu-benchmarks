@@ -14,11 +14,12 @@ SOLVERS = {
     # "clarabel": lambda prob: run_clarabel(prob, algebra=None),
     "cuclarabel": lambda prob: run_clarabel(prob, algebra="cuda"),
     "gurobi": lambda prob: run_gurobi(prob),
-    # "mosek": lambda prob: run_mosek(prob),
+    "mosek": lambda prob: run_mosek(prob),
 }
 
 VERBOSE = True
 TOLERANCE = 1e-7
+TIME_LIMIT = 3600
 
 
 def get_problem_size(prob):
@@ -206,6 +207,7 @@ def solve_gurobi_direct(data):
     model.setParam("BarQCPConvTol", TOLERANCE)
     model.setParam("FeasibilityTol", TOLERANCE)
     model.setParam("OptimalityTol", TOLERANCE)
+    model.setParam("TimeLimit", TIME_LIMIT)
 
     n = data.n
     x = model.addMVar(n, lb=-GRB.INFINITY)
@@ -456,6 +458,7 @@ def run_mosek(problem):
                 "MSK_DPAR_INTPNT_CO_TOL_DFEAS": TOLERANCE,
                 "MSK_DPAR_INTPNT_CO_TOL_REL_GAP": TOLERANCE,
                 "MSK_DPAR_INTPNT_CO_TOL_MU_RED": TOLERANCE,
+                "MSK_DPAR_OPTIMIZER_MAX_TIME": TIME_LIMIT,
             },
         )
 

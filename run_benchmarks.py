@@ -29,9 +29,9 @@ PROB_SIZES = {
 }
 
 MAX_CPU_SIZE = {
-    "portfolio": 900,
-    "huber": 4000,
-    "group_lasso": 150,
+    "portfolio": 1800,
+    "huber": 10000,
+    "group_lasso": 750,
 }
 
 
@@ -52,7 +52,7 @@ def run_benchmarks(prob_name):
     for n in n_values:
         print(f"Solving {prob_name} problem for n={n}...")
         prob = PROB_HANDPARSED[prob_name](n)
-        # prob_cvxpy = PROB_CVXPY[prob_name](n)
+        prob_cvxpy = PROB_CVXPY[prob_name](n)
         problem_size = get_problem_size(prob)
 
         # For n > max_cpu_size, only run GPU solvers
@@ -74,10 +74,7 @@ def run_benchmarks(prob_name):
                 _ = solver_func(prob)
                 cuda_warmed_up.add(solver_name)
             if solver_name == "mosek":
-                raise NotImplementedError(
-                    "Cannot use mosek with cvxpy due to memory/performance issues."
-                )
-                # stats = solver_func(prob_cvxpy)
+                stats = solver_func(prob_cvxpy)
             else:
                 stats = solver_func(prob)
             stats["size"] = problem_size

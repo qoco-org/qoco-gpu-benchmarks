@@ -15,9 +15,10 @@ def portfolio_cvxpy(k):
 
     x = cp.Variable(n)
     y = cp.Variable(k)
+    z = np.sqrt(D) @ x
 
     obj = cp.Minimize(
-        cp.quad_form(x, D) + cp.quad_form(y, sparse.eye(k)) - (1 / gamma) * (mu.T @ x)
+        cp.sum_squares(z) + cp.sum_squares(y) - (1 / gamma) * (mu.T @ x)
     )
     con = [cp.sum(x) == 1, F.T @ x == y, 0 <= x]
     prob = cp.Problem(obj, con)
