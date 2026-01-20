@@ -9,12 +9,12 @@ import gurobipy as gp
 from gurobipy import GRB
 
 SOLVERS = {
-    "qoco": lambda prob: run_qoco(prob, algebra=None),
+    # "qoco": lambda prob: run_qoco(prob, algebra=None),
     "qoco_cuda": lambda prob: run_qoco(prob, algebra="cuda"),
     # "clarabel": lambda prob: run_clarabel(prob, algebra=None),
     "cuclarabel": lambda prob: run_clarabel(prob, algebra="cuda"),
     "gurobi": lambda prob: run_gurobi(prob),
-    "mosek": lambda prob: run_mosek(prob),
+    # "mosek": lambda prob: run_mosek(prob),
 }
 
 VERBOSE = True
@@ -26,7 +26,8 @@ def get_problem_size(prob):
     """Calculate problem size as nnz(A) + nnz(P)"""
 
     if isinstance(prob, ProblemData):
-        return prob.P.nnz + prob.A.nnz + prob.G.nnz
+        Pnnz = prob.P.nnz if prob.P is not None else 0
+        return Pnnz + prob.A.nnz + prob.G.nnz
     data, _, _ = prob.get_problem_data(cp.CLARABEL)
     nnzA = data["A"].nnz
     nnzP = 0
@@ -208,6 +209,8 @@ def solve_gurobi_direct(data):
     model.setParam("FeasibilityTol", TOLERANCE)
     model.setParam("OptimalityTol", TOLERANCE)
     model.setParam("TimeLimit", TIME_LIMIT)
+    model.setParam("Method", 2)
+    model.setParam("Crossover", 0)
 
     n = data.n
     x = model.addMVar(n, lb=-GRB.INFINITY)
@@ -218,8 +221,10 @@ def solve_gurobi_direct(data):
     # -------------------------
     P = data.P
     c = data.c
-
-    model.setMObjective(0.5 * P, c, 0.0)
+    if P:
+        model.setMObjective(0.5 * P, c, 0.0)
+    else:
+        model.setObjective(c @ x, gp.GRB.MINIMIZE)
 
     # -------------------------
     # Equality constraints: A x = b
@@ -458,7 +463,7 @@ def run_mosek(problem):
                 "MSK_DPAR_INTPNT_CO_TOL_DFEAS": TOLERANCE,
                 "MSK_DPAR_INTPNT_CO_TOL_REL_GAP": TOLERANCE,
                 "MSK_DPAR_INTPNT_CO_TOL_MU_RED": TOLERANCE,
-                "MSK_DPAR_OPTIMIZER_MAX_TIME": TIME_LIMIT,
+                # "MSK_DPAR_OPTIMIZER_MAX_TIME": TIME_LIMIT,
             },
         )
 
