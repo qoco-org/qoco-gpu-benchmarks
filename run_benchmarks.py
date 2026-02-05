@@ -4,34 +4,39 @@ import os
 from problems.portfolio import *
 from problems.huber import *
 from problems.group_lasso import *
+from problems.multiperiod_portfolio import *
 from solvers import SOLVERS, get_problem_size
 from utils import write_results
 from memory_profiler import profile
 
-PROBLEMS = ["portfolio", "huber", "group_lasso"]
+PROBLEMS = ["portfolio", "huber", "group_lasso", "multiperiod_portfolio"]
 
 PROB_HANDPARSED = {
     "portfolio": portfolio_handparsed,
     "huber": huber_handparsed,
     "group_lasso": group_lasso_handparsed,
+    "multiperiod_portfolio": multiperiod_portfolio_cvxpy,
 }
 
 PROB_CVXPY = {
     "portfolio": portfolio_cvxpy,
     "huber": huber_cvxpy,
     "group_lasso": group_lasso_cvxpy,
+    "multiperiod_portfolio": multiperiod_portfolio_cvxpy,
 }
 
 PROB_SIZES = {
     "portfolio": [10, 50, 100, 200, 500, 900, 1300, 1800],
     "huber": [50, 200, 500, 1000, 2000, 4000, 6000, 10000],
     "group_lasso": [5, 20, 50, 100, 150, 300, 450, 750], # Any larger than 750 and CuClarabel runs out of memory
+    "multiperiod_portfolio": [2, 5, 10, 15, 25, 50, 75, 125]
 }
 
 MAX_CPU_SIZE = {
     "portfolio": 1800,
     "huber": 10000,
     "group_lasso": 750,
+    "multiperiod_portfolio": 125,
 }
 
 

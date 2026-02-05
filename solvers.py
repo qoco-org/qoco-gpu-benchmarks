@@ -9,12 +9,12 @@ import gurobipy as gp
 from gurobipy import GRB
 
 SOLVERS = {
-    # "qoco": lambda prob: run_qoco(prob, algebra=None),
+    "qoco": lambda prob: run_qoco(prob, algebra=None),
     "qoco_cuda": lambda prob: run_qoco(prob, algebra="cuda"),
     # "clarabel": lambda prob: run_clarabel(prob, algebra=None),
     "cuclarabel": lambda prob: run_clarabel(prob, algebra="cuda"),
     "gurobi": lambda prob: run_gurobi(prob),
-    # "mosek": lambda prob: run_mosek(prob),
+    "mosek": lambda prob: run_mosek(prob),
 }
 
 VERBOSE = True

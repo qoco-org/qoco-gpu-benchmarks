@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 plt.rcParams["text.usetex"] = True
 plt.rcParams["font.family"] = "serif"
 SOLVED_STRINGS = ["QOCO_SOLVED", "SOLVED", "Solved", "optimal"]
-PROBLEMS = ["portfolio", "huber", "group_lasso"]
+PROBLEMS = ["portfolio", "huber", "group_lasso", "multiperiod_portfolio"]
 
 
 def plot_benchmark(prob_name):
