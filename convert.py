@@ -3,6 +3,7 @@ import numpy as np
 from scipy.sparse import csc_matrix
 from solvers import ProblemData
 
+
 def mps_to_standard_form(mps_file):
     """
     Reads an MPS (.mps or .mps.gz) with Gurobi and returns
@@ -108,5 +109,16 @@ def mps_to_standard_form(mps_file):
     b = np.array(b)
     h = np.array(h)
     return ProblemData(
-        n=n, m=ineq_row, p=eq_row, P=None, c=c, A=A, b=b, G=G, h=h, l=ineq_row, nsoc=0, q=[]
+        n=n,
+        m=ineq_row,
+        p=eq_row,
+        P=None,
+        c=c,
+        A=A,
+        b=b,
+        G=G,
+        h=h,
+        l=ineq_row,
+        nsoc=0,
+        q=[],
     )
