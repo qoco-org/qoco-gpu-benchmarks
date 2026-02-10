@@ -2,5 +2,6 @@ __pycache__/
 portfolio/
 huber/
 group_lasso/
-tv_denoise/
+multiperiod_portfolio/
+tv_denoising/
 test.py
