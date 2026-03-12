@@ -1,7 +1,7 @@
 __pycache__/
-portfolio/
-huber/
-group_lasso/
-multiperiod_portfolio/
-tv_denoising/
+# portfolio/
+# huber/
+# group_lasso/
+# multiperiod_portfolio/
+# tv_denoising/
 test.py

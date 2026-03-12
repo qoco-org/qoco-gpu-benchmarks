@@ -75,6 +75,7 @@ def solve_cuclarabel_direct(data):
 
     jl.seval("using Clarabel, LinearAlgebra, SparseArrays")
     jl.seval("using CUDA, CUDA.CUSPARSE")
+    pyext = jl.Base.get_extension(jl.Clarabel, jl.Symbol("PythonExt"))
 
     # Combine A and G: [A; G]
     if data.A is not None and data.G is not None:
@@ -113,7 +114,7 @@ def solve_cuclarabel_direct(data):
 
     # Convert P to Julia
     if Pgpu.nnz != 0:
-        jl.P = jl.Clarabel.cupy_to_cucsrmat(
+        jl.P = pyext.cupy_to_cucsrmat(
             jl.Float64,
             int(Pgpu.data.data.ptr),
             int(Pgpu.indices.data.ptr),
@@ -128,8 +129,8 @@ def solve_cuclarabel_direct(data):
         """
         )
 
-    jl.q = jl.Clarabel.cupy_to_cuvector(jl.Float64, int(qgpu.data.ptr), qgpu.size)
-    jl.A = jl.Clarabel.cupy_to_cucsrmat(
+    jl.q = pyext.cupy_to_cuvector(jl.Float64, int(qgpu.data.ptr), qgpu.size)
+    jl.A = pyext.cupy_to_cucsrmat(
         jl.Float64,
         int(Agpu.data.data.ptr),
         int(Agpu.indices.data.ptr),
@@ -137,7 +138,7 @@ def solve_cuclarabel_direct(data):
         *Agpu.shape,
         Agpu.nnz,
     )
-    jl.b = jl.Clarabel.cupy_to_cuvector(jl.Float64, int(bgpu.data.ptr), bgpu.size)
+    jl.b = pyext.cupy_to_cuvector(jl.Float64, int(bgpu.data.ptr), bgpu.size)
 
     # Set up cone dimensions
     # Zero cone: data.p (equality constraints)
@@ -221,7 +222,7 @@ def solve_gurobi_direct(data):
     # -------------------------
     P = data.P
     c = data.c
-    if P:
+    if P is not None:
         model.setMObjective(0.5 * P, c, 0.0)
     else:
         model.setObjective(c @ x, gp.GRB.MINIMIZE)
