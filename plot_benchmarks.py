@@ -78,12 +78,9 @@ def plot_benchmark(prob_name):
     plt.yscale("log")
 
     # Save plot
-    output_path = os.path.join(prob_name, "runtime_vs_size.png")
+    output_path = os.path.join(prob_name, "runtime_vs_size.pdf")
     plt.savefig(output_path, dpi=300, bbox_inches="tight")
     print(f"Plot saved to {output_path}")
-
-    plt.show()
-
 
 def main():
     parser = argparse.ArgumentParser(description="Plot benchmark results")
