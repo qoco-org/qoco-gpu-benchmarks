@@ -1,8 +1,16 @@
 import pandas as pd
 
-PROBLEMS = ["group_lasso", "huber", "portfolio", "multiperiod_portfolio", "tv_denoising"]
+PROBLEMS = ["huber", "portfolio", "multiperiod_portfolio", "group_lasso", "tv_denoising"]
 
 SOLVED_STRINGS = ["QOCO_SOLVED", "SOLVED", "Solved", "optimal"]
+
+solvers = {
+    "CuClarabel": "cuclarabel_results.csv",
+    "Gurobi": "gurobi_results.csv",
+    "Mosek": "mosek_results.csv",
+    "QOCO": "qoco_results.csv",
+    "QOCO-GPU": "qoco_cuda_results.csv",
+}
 
 
 def latex_escape(s):
@@ -13,30 +21,21 @@ def latex_escape(s):
             .replace("%", r"\%")
             .replace("#", r"\#"))
 
-dfs = {}
 
-def write_table(problem_name):
-    solvers = {
-        "CuClarabel": problem_name + "/cuclarabel_results.csv",
-        "Gurobi": problem_name + "/gurobi_results.csv",
-        "Mosek": problem_name + "/mosek_results.csv",
-        "QOCO": problem_name + "/qoco_results.csv",
-        "QOCO-GPU": problem_name + "/qoco_cuda_results.csv",
-    }
+def load_problem(problem_name):
+    dfs = {}
 
-    # read CSVs and compute runtime
-    for solver, path in solvers.items():
+    for solver, file in solvers.items():
+        path = f"{problem_name}/{file}"
         df = pd.read_csv(path)
 
-        # compute runtime
         df["runtime"] = df["setup_time"] + df["solve_time"]
 
-        # mark unsolved problems as NaN runtime
+        # mark timeouts
         df.loc[df["runtime"] > 3600., "runtime"] = pd.NA
 
         dfs[solver] = df[["name", "size", "runtime"]]
 
-    # merge all solver tables
     merged = None
     for solver, df in dfs.items():
         df = df.rename(columns={"runtime": solver})
@@ -45,23 +44,56 @@ def write_table(problem_name):
         else:
             merged = merged.merge(df[["name", solver]], on="name", how="outer")
 
-    # keep size column from the first dataframe
     merged["size"] = merged["size"].ffill()
-
-    # sort by size
     merged = merged.sort_values("size")
+
+    merged["problem_group"] = problem_name
+
+    return merged
+
+def make_benchmark_table():
+
+    tables = []
+
+    for p in PROBLEMS:
+        tables.append(load_problem(p))
+
+    merged = pd.concat(tables, ignore_index=True)
 
     solver_names = list(solvers.keys())
 
     lines = []
 
-    lines.append(r"\begin{table}[ht]")
-    lines.append(r"\begin{tabular}{l r " + " ".join(["r"]*len(solver_names)) + "}")
+    lines.append(r"{\footnotesize")
+    lines.append(r"\begin{longtable}{l r " + " ".join(["r"]*len(solver_names)) + "}")
+    lines.append(r"\caption{\bf Benchmark runtimes in seconds.}")
+    lines.append(r"\label{tab:solver_benchmarks} \\")
+    lines.append("")
     lines.append(r"\toprule")
     lines.append("Problem & Size & " + " & ".join(solver_names) + r" \\")
     lines.append(r"\midrule")
+    lines.append(r"\endfirsthead")
+    lines.append("")
+    lines.append(r"\toprule")
+    lines.append("Problem & Size & " + " & ".join(solver_names) + r" \\")
+    lines.append(r"\midrule")
+    lines.append(r"\endhead")
+    lines.append("")
+    lines.append(r"\midrule")
+    lines.append(r"\multicolumn{" + str(len(solver_names)+2) + r"}{r}{\footnotesize Continued on next page} \\")
+    lines.append(r"\endfoot")
+    lines.append("")
+    lines.append(r"\bottomrule")
+    lines.append(r"\endlastfoot")
+
+    current_group = None
 
     for _, row in merged.iterrows():
+
+        if current_group is not None and row["problem_group"] != current_group:
+            lines.append(r"\midrule")
+
+        current_group = row["problem_group"]
 
         runtimes = [row[s] for s in solver_names if not pd.isna(row[s])]
         best = min(runtimes) if runtimes else None
@@ -87,16 +119,12 @@ def write_table(problem_name):
 
         lines.append(line)
 
-    lines.append(r"\bottomrule")
-    lines.append(r"\end{tabular}")
-    lines.append(r"\captionsetup{labelfont=bf}")
-    lines.append(rf"\caption{{ \bf {latex_escape(problem_name).capitalize()} runtime in seconds.}}")
-    lines.append(rf"\label{{tab:{problem_name}_benchmarks}}")
-    lines.append(r"\end{table}")
+    lines.append(r"\end{longtable}")
+    lines.append(r"}")
 
-    with open(f"{problem_name}_table.tex", "w") as f:
+    with open("benchmark_table.tex", "w") as f:
         f.write("\n".join(lines))
 
+
 if __name__ == "__main__":
-    for problem in PROBLEMS:
-        write_table(problem)
+    make_benchmark_table()
