@@ -5,11 +5,11 @@ PROBLEMS = ["huber", "portfolio", "multiperiod_portfolio", "group_lasso", "tv_de
 SOLVED_STRINGS = ["QOCO_SOLVED", "SOLVED", "Solved", "optimal"]
 
 solvers = {
-    "CuClarabel": "cuclarabel_results.csv",
-    "Gurobi": "gurobi_results.csv",
-    "Mosek": "mosek_results.csv",
-    "QOCO": "qoco_results.csv",
     "QOCO-GPU": "qoco_cuda_results.csv",
+    "QOCO": "qoco_results.csv",
+    "CuClarabel": "cuclarabel_results.csv",
+    "Mosek": "mosek_results.csv",
+    "Gurobi": "gurobi_results.csv",
 }
 
 
