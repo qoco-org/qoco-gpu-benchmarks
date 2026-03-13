@@ -1,14 +1,9 @@
 import pandas as pd
 
-NAME = "tv_denoising"
+PROBLEMS = ["group_lasso", "huber", "portfolio", "multiperiod_portfolio", "tv_denoising"]
 
-solvers = {
-    "CuClarabel": NAME + "/cuclarabel_results.csv",
-    "Gurobi": NAME + "/gurobi_results.csv",
-    "Mosek": NAME + "/mosek_results.csv",
-    "QOCO": NAME + "/qoco_results.csv",
-    "QOCO-GPU": NAME + "/qoco_cuda_results.csv",
-}
+SOLVED_STRINGS = ["QOCO_SOLVED", "SOLVED", "Solved", "optimal"]
+
 
 def latex_escape(s):
     return (str(s)
@@ -20,70 +15,88 @@ def latex_escape(s):
 
 dfs = {}
 
-# read CSVs and compute runtime
-for solver, path in solvers.items():
-    df = pd.read_csv(path)
-    df["runtime"] = df["setup_time"] + df["solve_time"]
-    dfs[solver] = df[["name", "size", "runtime"]]
+def write_table(problem_name):
+    solvers = {
+        "CuClarabel": problem_name + "/cuclarabel_results.csv",
+        "Gurobi": problem_name + "/gurobi_results.csv",
+        "Mosek": problem_name + "/mosek_results.csv",
+        "QOCO": problem_name + "/qoco_results.csv",
+        "QOCO-GPU": problem_name + "/qoco_cuda_results.csv",
+    }
 
-# merge all solver tables
-merged = None
-for solver, df in dfs.items():
-    df = df.rename(columns={"runtime": solver})
-    if merged is None:
-        merged = df
-    else:
-        merged = merged.merge(df[["name", solver]], on="name", how="outer")
+    # read CSVs and compute runtime
+    for solver, path in solvers.items():
+        df = pd.read_csv(path)
 
-# keep size column from the first dataframe
-merged["size"] = merged["size"].ffill()
+        # compute runtime
+        df["runtime"] = df["setup_time"] + df["solve_time"]
 
-# sort by size (optional but usually nicer)
-merged = merged.sort_values("size")
+        # mark unsolved problems as NaN runtime
+        df.loc[df["runtime"] > 3600., "runtime"] = pd.NA
 
-solver_names = list(solvers.keys())
+        dfs[solver] = df[["name", "size", "runtime"]]
 
-lines = []
-
-lines.append(r"\begin{table}[ht]")
-lines.append(r"\begin{tabular}{l r " + " ".join(["r"]*len(solver_names)) + "}")
-lines.append(r"\toprule")
-lines.append("Problem & Size & " + " & ".join(solver_names) + r" \\")
-lines.append(r"\midrule")
-
-for _, row in merged.iterrows():
-
-    runtimes = [row[s] for s in solver_names if not pd.isna(row[s])]
-    best = min(runtimes) if runtimes else None
-
-    cells = []
-    for s in solver_names:
-        val = row[s]
-
-        if pd.isna(val):
-            cells.append("-")
-        elif best is not None and val == best:
-            cells.append(r"\winner %.3f" % val)
+    # merge all solver tables
+    merged = None
+    for solver, df in dfs.items():
+        df = df.rename(columns={"runtime": solver})
+        if merged is None:
+            merged = df
         else:
-            cells.append("%.3f" % val)
+            merged = merged.merge(df[["name", solver]], on="name", how="outer")
 
-    name = latex_escape(row["name"])
+    # keep size column from the first dataframe
+    merged["size"] = merged["size"].ffill()
 
-    line = (
-        f"{name} & {int(row['size'])} & "
-        + " & ".join(cells)
-        + r" \\"
-    )
+    # sort by size
+    merged = merged.sort_values("size")
 
-    lines.append(line)
+    solver_names = list(solvers.keys())
 
-lines.append(r"\bottomrule")
-lines.append(r"\end{tabular}")
-lines.append(r"\captionsetup{labelfont=bf}")
-lines.append(rf"\caption{{ \bf {latex_escape(NAME).capitalize()} runtime in seconds.}}")
-lines.append(rf"\label{{tab:{NAME}_benchmarks}}")
-# lines.append("")
-lines.append(r"\end{table}")
+    lines = []
 
-with open(f"{NAME}_table.tex", "w") as f:
-    f.write("\n".join(lines))
+    lines.append(r"\begin{table}[ht]")
+    lines.append(r"\begin{tabular}{l r " + " ".join(["r"]*len(solver_names)) + "}")
+    lines.append(r"\toprule")
+    lines.append("Problem & Size & " + " & ".join(solver_names) + r" \\")
+    lines.append(r"\midrule")
+
+    for _, row in merged.iterrows():
+
+        runtimes = [row[s] for s in solver_names if not pd.isna(row[s])]
+        best = min(runtimes) if runtimes else None
+
+        cells = []
+        for s in solver_names:
+            val = row[s]
+
+            if pd.isna(val):
+                cells.append("-")
+            elif best is not None and val == best:
+                cells.append(r"\winner %.3f" % val)
+            else:
+                cells.append("%.3f" % val)
+
+        name = latex_escape(row["name"])
+
+        line = (
+            f"{name} & {int(row['size'])} & "
+            + " & ".join(cells)
+            + r" \\"
+        )
+
+        lines.append(line)
+
+    lines.append(r"\bottomrule")
+    lines.append(r"\end{tabular}")
+    lines.append(r"\captionsetup{labelfont=bf}")
+    lines.append(rf"\caption{{ \bf {latex_escape(problem_name).capitalize()} runtime in seconds.}}")
+    lines.append(rf"\label{{tab:{problem_name}_benchmarks}}")
+    lines.append(r"\end{table}")
+
+    with open(f"{problem_name}_table.tex", "w") as f:
+        f.write("\n".join(lines))
+
+if __name__ == "__main__":
+    for problem in PROBLEMS:
+        write_table(problem)
