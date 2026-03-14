@@ -70,7 +70,7 @@ def write_latex_table(rs, fail):
     best_fail = min(fail.values())
 
     lines = []
-    lines.append(r"\begin{table}[t]")
+    lines.append(r"\begin{table}[ht]")
     lines.append(r"\centering")
     lines.append(r"\caption{ \bf Shifted geometric means and failure rates for benchmark problems}")
     lines.append(r"\begin{tabular}{l" + "c"*len(solver_names) + "}")

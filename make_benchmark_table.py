@@ -66,7 +66,7 @@ def make_benchmark_table():
 
     lines.append(r"{\footnotesize")
     lines.append(r"\begin{longtable}{l r " + " ".join(["r"]*len(solver_names)) + "}")
-    lines.append(r"\caption{\bf Benchmark runtimes in seconds.}")
+    lines.append(r"\caption{\bf Solvetime in seconds for benchmark problems}")
     lines.append(r"\label{tab:solver_benchmarks} \\")
     lines.append("")
     lines.append(r"\toprule")
