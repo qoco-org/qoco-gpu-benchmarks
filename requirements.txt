@@ -1,0 +1,9 @@
+qoco[cuda]
+mosek
+gurobipy
+cvxpy
+matplotlib
+scikit-image
+cupy
+juliacall
+pandas
