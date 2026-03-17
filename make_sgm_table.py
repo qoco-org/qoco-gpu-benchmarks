@@ -43,7 +43,7 @@ def compute_shifted_geometric_mean(tmax=3600):
 
             for r, st in zip(runtime, status):
 
-                if r > tmax or math.isnan(r):
+                if r > tmax or math.isnan(r) or st not in SOLVED_STRINGS:
                     fail[solver] += 1
                     t[solver].append(tmax)
                 else:

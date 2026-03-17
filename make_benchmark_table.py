@@ -46,7 +46,10 @@ def load_problem(problem_name):
             df["setup_frac"] = pd.NA
 
         # Mark timeouts
-        df.loc[df["runtime"] > 3600.0, "runtime"] = pd.NA
+        df.loc[
+            (df["runtime"] > 3600.0) | (~df["status"].isin(SOLVED_STRINGS)),
+            "runtime"
+        ] = pd.NA
         df.loc[df["runtime"].isna(), "setup_frac"] = pd.NA
 
         dfs[solver] = df[["name", "size", "runtime", "setup_frac"]]

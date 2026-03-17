@@ -12,6 +12,8 @@ PROBLEMS = [
     "tv_denoising",
 ]
 
+SOLVED_STRINGS = ["QOCO_SOLVED", "SOLVED", "Solved", "optimal"]
+
 solvers = {
     "QOCO": "qoco_results.csv",
     "QOCO-GPU": "qoco_cuda_results.csv",
@@ -49,7 +51,7 @@ def load_all_runtimes(tmax):
 
             for r, st in zip(runtime, status):
 
-                if r > tmax or math.isnan(r):
+                if r > tmax or math.isnan(r) or st not in SOLVED_STRINGS:
                     t[solver].append(tmax)
                 else:
                     t[solver].append(r)
