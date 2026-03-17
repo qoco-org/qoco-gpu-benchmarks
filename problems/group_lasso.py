@@ -51,11 +51,7 @@ def group_lasso_handparsed(ngroups):
 
     Im = sparse.identity(m, format="csc")
     P = sparse.block_diag(
-        [
-            sparse.csc_matrix((n, n)),
-            2 * Im,
-            sparse.csc_matrix((ngroups, ngroups)),
-        ],
+        [sparse.csc_matrix((n, n)), 2 * Im, sparse.csc_matrix((ngroups, ngroups)),],
         format="csc",
     )
     c = np.concatenate([np.zeros(n), np.zeros(m), lam * np.ones(ngroups)])

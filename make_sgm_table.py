@@ -3,7 +3,13 @@ import numpy as np
 import pandas as pd
 import math
 
-PROBLEMS = ["group_lasso", "huber", "portfolio", "multiperiod_portfolio", "tv_denoising"]
+PROBLEMS = [
+    "group_lasso",
+    "huber",
+    "portfolio",
+    "multiperiod_portfolio",
+    "tv_denoising",
+]
 
 SOLVED_STRINGS = ["QOCO_SOLVED", "SOLVED", "Solved", "optimal"]
 
@@ -50,7 +56,7 @@ def compute_shifted_geometric_mean(tmax=3600):
     for s in solvers:
         prod = 1.0
         for p in range(n_prob):
-            prod *= (1 + t[s][p])
+            prod *= 1 + t[s][p]
         rs[s] = prod ** (1 / n_prob) - 1
 
     # normalize by best solver
@@ -70,10 +76,7 @@ def write_latex_table(rs, fail):
     best_fail = min(fail.values())
 
     lines = []
-    lines.append(r"\begin{table}[ht]")
-    lines.append(r"\centering")
-    lines.append(r"\caption{ \bf Shifted geometric means and failure rates for benchmark problems}")
-    lines.append(r"\begin{tabular}{l" + "c"*len(solver_names) + "}")
+    lines.append(r"\begin{tabular}{l" + "c" * len(solver_names) + "}")
     lines.append(r"\toprule")
 
     lines.append(" & " + " & ".join(solver_names) + r" \\")
@@ -101,10 +104,10 @@ def write_latex_table(rs, fail):
 
     lines.append(r"\bottomrule")
     lines.append(r"\end{tabular}")
-    lines.append(r"\end{table}")
 
     with open("sgm_table.tex", "w") as f:
         f.write("\n".join(lines))
+
 
 if __name__ == "__main__":
     compute_shifted_geometric_mean()

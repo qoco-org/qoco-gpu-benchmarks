@@ -14,8 +14,6 @@ COLOR = {
     "gurobi": "coral",
 }
 
-SOLVED_STRINGS = ["QOCO_SOLVED", "SOLVED", "Solved", "optimal"]
-
 PROBLEMS = [
     "portfolio",
     "huber",
@@ -67,7 +65,7 @@ def plot_problem(ax, prob_name):
             linewidth=2,
             markersize=5,
             label=display_name,
-            color=COLOR[solver_name]
+            color=COLOR[solver_name],
         )
 
     ax.set_xscale("log")
@@ -93,29 +91,24 @@ def main():
         axes.append(ax)
         plot_problem(ax, prob)
 
-
     # center the fifth plot
     ax5 = axes[4]
     pos = ax5.get_position()
 
     xright = axes[3].get_position().x0
 
-    ax5.set_position([
-        0.5 * (pos.x0 + xright),
-        pos.y0,
-        pos.width,
-        pos.height,
-    ])
+    ax5.set_position(
+        [0.5 * (pos.x0 + xright), pos.y0, pos.width, pos.height,]
+    )
 
     # legend
     handles, labels = plt.gca().get_legend_handles_labels()
     plt.legend(handles, labels, loc="center right", bbox_to_anchor=(1.5, 0.5))
 
     plt.savefig(
-        "benchmark_runtime.pdf",
-        dpi=300,
-        bbox_inches="tight",
+        "benchmark_runtime.pdf", dpi=300, bbox_inches="tight",
     )
+
 
 if __name__ == "__main__":
     main()

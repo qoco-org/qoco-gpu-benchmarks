@@ -8,7 +8,6 @@ from problems.multiperiod_portfolio import *
 from problems.tv_denoising import *
 from solvers import SOLVERS, get_problem_size
 from utils import write_results
-from memory_profiler import profile
 
 PROBLEMS = [
     "portfolio",
@@ -60,7 +59,6 @@ MAX_CPU_SIZE = {
 }
 
 
-# @profile
 def run_benchmarks(prob_name):
     os.makedirs(prob_name, exist_ok=True)
     n_values = PROB_SIZES[prob_name]
