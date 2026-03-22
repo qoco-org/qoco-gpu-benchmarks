@@ -1,7 +1,9 @@
-qoco[cuda]
+qoco==0.2.3
+qoco-cuda==0.1.3
 mosek
 gurobipy
 cvxpy
+git+https://github.com/cvxpy/cvxpy.git@e2ac022d6707f1ce385a83fea02889cf615a22f2
 matplotlib
 scikit-image
 cupy

@@ -138,7 +138,7 @@ def plot_absolute_profile(df):
     plt.legend()
     plt.grid(True)
 
-    plt.savefig("benchmark_absolute_profile.pdf", bbox_inches="tight")
+    plt.savefig("figures/benchmark_absolute_profile.pdf", bbox_inches="tight")
     plt.close()
 
 

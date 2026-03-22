@@ -106,7 +106,7 @@ def main():
     plt.legend(handles, labels, loc="center right", bbox_to_anchor=(1.5, 0.5))
 
     plt.savefig(
-        "benchmark_runtime.pdf", dpi=300, bbox_inches="tight",
+        "figures/benchmark_runtime.pdf", dpi=300, bbox_inches="tight",
     )
 
 

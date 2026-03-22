@@ -162,7 +162,7 @@ def make_benchmark_table():
     lines.append(r"\end{longtable}")
     lines.append(r"}")
 
-    with open("benchmark_table.tex", "w") as f:
+    with open("figures/benchmark_table.tex", "w") as f:
         f.write("\n".join(lines))
 
 

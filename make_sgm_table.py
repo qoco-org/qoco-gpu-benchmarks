@@ -105,7 +105,7 @@ def write_latex_table(rs, fail):
     lines.append(r"\bottomrule")
     lines.append(r"\end{tabular}")
 
-    with open("sgm_table.tex", "w") as f:
+    with open("figures/sgm_table.tex", "w") as f:
         f.write("\n".join(lines))
 
 
