@@ -2,7 +2,7 @@
 
 To run the benchmarks follow the steps
 
-1. Create fresh virtual environment
+1. Create a python 3.13 virtual environment
 2. Run `pip install -r requirements.txt`
 3. Install CuClarabel: https://www.cvxpy.org/install/index.html?h=cuclarabel. You may have to install it in the PyCall julia environment. Since I use anaconda this required running the following commands:
 ```
