@@ -23,7 +23,7 @@ solvers = {
 }
 
 COLOR = {
-    "QOCO": "royalblue",
+    "QOCO": "black",
     "QOCO-GPU": "mediumseagreen",
     "CuClarabel": "darkviolet",
     "Mosek": "firebrick",
@@ -109,6 +109,7 @@ def compute_absolute_profile(t, xrange=(-3, 3.5), n_tau=3600):
 
 
 def plot_relative_profile(df):
+    plt.rcParams.update({"text.usetex": True, "font.family": "serif"})
 
     plt.figure()
 
@@ -121,11 +122,12 @@ def plot_relative_profile(df):
     plt.legend()
     plt.grid(True)
 
-    plt.savefig("benchmark_relative_profile.pdf", bbox_inches="tight")
+    plt.savefig("figures/benchmark_relative_profile.pdf", bbox_inches="tight")
     plt.close()
 
 
 def plot_absolute_profile(df):
+    plt.rcParams.update({"text.usetex": True, "font.family": "serif"})
 
     plt.figure()
 
