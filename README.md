@@ -1,4 +1,6 @@
-# qoco-gpu-benchmarks
+# QOCO GPU Benchmarks
+
+This repository was used to generated the numerical results in the paper titled [QOCO-GPU: A Quadratic Objective Conic Optimizer with GPU Acceleration](https://arxiv.org/abs/2603.29197).
 
 To run the benchmarks follow the steps
 
@@ -16,3 +18,15 @@ julia --project=/home/govind/anaconda3/envs/test/julia_env -e 'import Pkg; Pkg.a
 ))'
 ```
 4. Run `./run_all.sh` and the figures will be created in the `figures/` directory
+
+## Citing
+```
+@misc{chari2026qocogpu,
+  title = {QOCO-GPU: a quadratic objective conic optimizer with {GPU} acceleration},
+  author = {Chari, Govind M and A{\c{c}}{\i}kme{\c{s}}e, Beh{\c{c}}et},
+  year = {2026},
+  eprint = {2603.29197},
+  archiveprefix = {arXiv},
+  primaryclass = {math.OC},
+}
+```
