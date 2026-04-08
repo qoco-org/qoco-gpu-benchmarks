@@ -21,12 +21,10 @@ julia --project=/home/govind/anaconda3/envs/test/julia_env -e 'import Pkg; Pkg.a
 
 ## Citing
 ```
-@misc{chari2026qocogpu,
-  title = {QOCO-GPU: a quadratic objective conic optimizer with {GPU} acceleration},
+@article{chari2026qocogpu,
+  title = {{QOCO}-{GPU}: A Quadratic Objective Conic Optimizer with GPU Acceleration},
   author = {Chari, Govind M and A{\c{c}}{\i}kme{\c{s}}e, Beh{\c{c}}et},
+  journal = {arXiv preprint arXiv:2603.29197},
   year = {2026},
-  eprint = {2603.29197},
-  archiveprefix = {arXiv},
-  primaryclass = {math.OC},
 }
 ```
