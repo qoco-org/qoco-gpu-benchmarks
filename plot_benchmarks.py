@@ -10,6 +10,7 @@ COLOR = {
     "qoco": "royalblue",
     "qoco_cuda": "mediumseagreen",
     "cuclarabel": "darkviolet",
+    "moreau": "darkorange",
     "mosek": "firebrick",
     "gurobi": "coral",
 }
@@ -23,11 +24,8 @@ PROBLEMS = [
 ]
 
 SOLVERS = {
-    "qoco": r"\textsc{QOCO}",
     "qoco_cuda": r"\textsc{QOCO-GPU}",
-    "cuclarabel": r"\textsc{CuClarabel}",
-    "mosek": r"\textsc{Mosek}",
-    "gurobi": r"\textsc{Gurobi}",
+    "moreau": r"\textsc{Moreau}",
 }
 
 
@@ -107,6 +105,9 @@ def main():
 
     plt.savefig(
         "figures/benchmark_runtime.pdf", dpi=300, bbox_inches="tight",
+    )
+    plt.savefig(
+        "figures/benchmark_runtime.png", dpi=300, bbox_inches="tight",
     )
 
 

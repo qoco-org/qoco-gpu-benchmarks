@@ -69,7 +69,7 @@ def run_benchmarks(prob_name):
 
     # Track which CUDA solvers have been warmed up
     cuda_warmed_up = set[Any]()
-    cuda_solvers = {"qoco_cuda", "cuclarabel"}
+    cuda_solvers = {"qoco_cuda", "cuclarabel", "moreau"}
 
     # Run benchmarks for each n value
     for n in n_values:
@@ -83,7 +83,7 @@ def run_benchmarks(prob_name):
             active_solvers = {
                 name: func
                 for name, func in SOLVERS.items()
-                if name in ["cuclarabel", "qoco_cuda"]
+                if name in ["cuclarabel", "qoco_cuda", "moreau"]
             }
         else:
             active_solvers = SOLVERS

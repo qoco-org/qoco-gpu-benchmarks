@@ -7,14 +7,16 @@ import clarabel
 import cvxpy as cp
 import gurobipy as gp
 from gurobipy import GRB
+import moreau
 
 SOLVERS = {
-    "qoco": lambda prob: run_qoco(prob, algebra=None),
+    # "qoco": lambda prob: run_qoco(prob, algebra=None),
     "qoco_cuda": lambda prob: run_qoco(prob, algebra="cuda"),
     # "clarabel": lambda prob: run_clarabel(prob, algebra=None),
-    "cuclarabel": lambda prob: run_clarabel(prob, algebra="cuda"),
-    "gurobi": lambda prob: run_gurobi(prob),
-    "mosek": lambda prob: run_mosek(prob),
+    # "cuclarabel": lambda prob: run_clarabel(prob, algebra="cuda"),
+    "moreau": lambda prob: run_moreau(prob, algebra="cuda"),
+    # "gurobi": lambda prob: run_gurobi(prob),
+    # "mosek": lambda prob: run_mosek(prob),
 }
 
 VERBOSE = True
@@ -353,6 +355,89 @@ def run_clarabel(problem, algebra=None):
         "status": problem.status,
         "solve_time": solve_time,
         "num_iters": problem.solver_stats.num_iters,
+        "objective": problem.value,
+    }
+
+
+def solve_moreau_direct(data, algebra="cuda"):
+    # Moreau form: min 1/2 x'Px + q'x  s.t.  Ax + s = b, s in K
+    # with K = zero cone (equality) x nonneg cone (linear ineq) x SOCs.
+    # P must be full symmetric (both triangles).
+    if data.P is not None:
+        P = sp.csr_matrix(data.P)
+    else:
+        P = sp.csr_matrix((data.n, data.n))
+    q = np.asarray(data.c, dtype=float)
+
+    A = sp.vstack([data.A, data.G], format="csr")
+    b = np.concatenate([data.b, data.h]).astype(float)
+
+    cones = moreau.Cones(
+        num_zero_cones=int(data.p),
+        num_nonneg_cones=int(data.l),
+        so_cone_dims=[int(dim) for dim in data.q],
+    )
+
+    ipm = moreau.IPMSettings(
+        tol_gap_abs=TOLERANCE,
+        tol_gap_rel=TOLERANCE,
+        tol_feas=TOLERANCE,
+        direct_solve_method="cudss" if algebra == "cuda" else "auto",
+    )
+    device = "cuda" if algebra == "cuda" else "cpu"
+    settings = moreau.Settings(device=device, verbose=VERBOSE, ipm_settings=ipm)
+
+    solver = moreau.Solver(P, q, A, b, cones, settings)
+    solver.solve()
+    info = solver.info
+
+    status = "optimal" if info.status == moreau.SolverStatus.Solved else str(info.status)
+
+    return {
+        "setup_time": info.setup_time + info.construction_time,
+        "status": status,
+        "solve_time": info.solve_time,
+        "num_iters": info.iterations,
+        "objective": info.obj_val,
+    }
+
+
+def run_moreau(problem, algebra="cuda"):
+    # Direct interface for handparsed ProblemData
+    if isinstance(problem, ProblemData):
+        return solve_moreau_direct(problem, algebra=algebra)
+
+    # cvxpy interface
+    device = "cuda" if algebra == "cuda" else "cpu"
+    problem.solve(
+        verbose=VERBOSE,
+        solver="MOREAU",
+        device=device,
+        ipm_settings={
+            "tol_gap_abs": TOLERANCE,
+            "tol_gap_rel": TOLERANCE,
+            "tol_feas": TOLERANCE,
+            "direct_solve_method": "cudss" if algebra == "cuda" else "auto",
+        },
+    )
+
+    setup_time = (
+        0
+        if problem.solver_stats.setup_time is None
+        else problem.solver_stats.setup_time
+    )
+    solve_time = problem.solver_stats.solve_time
+    num_iters = (
+        problem.solver_stats.num_iters
+        if hasattr(problem.solver_stats, "num_iters")
+        else None
+    )
+
+    return {
+        "setup_time": setup_time,
+        "status": problem.status,
+        "solve_time": solve_time,
+        "num_iters": num_iters,
         "objective": problem.value,
     }
 
