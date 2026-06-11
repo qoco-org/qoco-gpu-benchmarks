@@ -22,7 +22,7 @@ solvers = {
 }
 
 COLOR = {
-    "QOCO": "black",
+    "QOCO": "royalblue",
     "QOCO-GPU": "mediumseagreen",
     "CuClarabel": "darkviolet",
     "Mosek": "firebrick",
