@@ -15,8 +15,10 @@ solvers = {
     "QOCO": "qoco_results.csv",
     "CuClarabel": "cuclarabel_results.csv",
     "Mosek": "mosek_results.csv",
-    "Gurobi": "gurobi_results.csv",
 }
+
+# Solvers shown as a single total-runtime column (in table order).
+SINGLE_SOLVERS = ["QOCO", "CuClarabel", "Mosek"]
 
 
 def latex_escape(s):
@@ -39,33 +41,37 @@ def load_problem(problem_name):
 
         df["runtime"] = df["setup_time"] + df["solve_time"]
 
-        # Compute setup fraction (only meaningful for QOCO-GPU)
+        # Analysis time is only reported by QOCO-GPU.
         if solver == "QOCO-GPU":
-            df["setup_frac"] = df["setup_time"] / df["runtime"]
+            df["analysis_time"] = df["analysis_time"]
         else:
-            df["setup_frac"] = pd.NA
+            df["analysis_time"] = pd.NA
 
-        # Mark timeouts
-        df.loc[
-            (df["runtime"] > 3600.0) | (~df["status"].isin(SOLVED_STRINGS)),
-            "runtime"
-        ] = pd.NA
-        df.loc[df["runtime"].isna(), "setup_frac"] = pd.NA
+        # Mark timeouts / failures as missing.
+        failed = (df["runtime"] > 3600.0) | (~df["status"].isin(SOLVED_STRINGS))
+        df.loc[failed, ["runtime", "setup_time", "solve_time", "analysis_time"]] = pd.NA
 
-        dfs[solver] = df[["name", "size", "runtime", "setup_frac"]]
+        dfs[solver] = df[
+            ["name", "size", "runtime", "setup_time", "solve_time", "analysis_time"]
+        ]
 
     merged = None
     for solver, df in dfs.items():
         df = df.rename(
-            columns={"runtime": solver, "setup_frac": f"{solver}_setup_frac"}
+            columns={
+                "runtime": solver,
+                "setup_time": f"{solver}_setup",
+                "solve_time": f"{solver}_solve",
+                "analysis_time": f"{solver}_analysis",
+            }
         )
 
+        cols = ["name", solver, f"{solver}_setup", f"{solver}_solve", f"{solver}_analysis"]
+
         if merged is None:
-            merged = df
+            merged = df[["size"] + cols]
         else:
-            merged = merged.merge(
-                df[["name", solver, f"{solver}_setup_frac"]], on="name", how="outer"
-            )
+            merged = merged.merge(df[cols], on="name", how="outer")
 
     merged["size"] = merged["size"].ffill()
     merged = merged.sort_values("size")
@@ -78,32 +84,49 @@ def make_benchmark_table():
     tables = [load_problem(p) for p in PROBLEMS]
     merged = pd.concat(tables, ignore_index=True)
 
-    solver_names = list(solvers.keys())
+    # All solvers that contribute a total runtime, used to find the winner.
+    total_solvers = list(solvers.keys())
 
     lines = []
 
     lines.append(r"{\footnotesize")
-    lines.append(r"\begin{longtable}{l r " + " ".join(["r"] * len(solver_names)) + "}")
+    lines.append(r"\begin{longtable}{l r *{3}{r} r r r}")
     lines.append(
-        r"\caption{\bf Runtime in seconds for benchmark problems (QOCO-GPU shows setup time percentage in parentheses)}"
+        r"\caption{\bf Runtime in seconds for benchmark problems. The QOCO-GPU "
+        r"columns decompose its total runtime into setup and solve time; the "
+        r"value in parentheses is the percentage of setup time spent in "
+        r"cuDSS's analysis (reordering) phase, the dominant component of "
+        r"setup. The fastest "
+        r"total runtime for each instance is highlighted.}"
     )
     lines.append(r"\label{tab:solver_benchmarks} \\")
     lines.append("")
+
+    header_group = (
+        r" & & \multicolumn{3}{c}{QOCO-GPU} & & & \\"
+    )
+    header_cmid = r"\cmidrule(lr){3-5}"
+    header_cols = (
+        r"Problem & Size & Setup & Solve & Total & QOCO & CuClarabel & Mosek \\"
+    )
+
     lines.append(r"\toprule")
-    lines.append("Problem & Size & " + " & ".join(solver_names) + r" \\")
+    lines.append(header_group)
+    lines.append(header_cmid)
+    lines.append(header_cols)
     lines.append(r"\midrule")
     lines.append(r"\endfirsthead")
     lines.append("")
     lines.append(r"\toprule")
-    lines.append("Problem & Size & " + " & ".join(solver_names) + r" \\")
+    lines.append(header_group)
+    lines.append(header_cmid)
+    lines.append(header_cols)
     lines.append(r"\midrule")
     lines.append(r"\endhead")
     lines.append("")
     lines.append(r"\midrule")
     lines.append(
-        r"\multicolumn{"
-        + str(len(solver_names) + 2)
-        + r"}{r}{\footnotesize Continued on next page} \\"
+        r"\multicolumn{8}{r}{\footnotesize Continued on next page} \\"
     )
     lines.append(r"\endfoot")
     lines.append("")
@@ -119,39 +142,47 @@ def make_benchmark_table():
 
         current_group = row["problem_group"]
 
-        # Determine best runtime (ignore NaNs)
-        runtimes = [row[s] for s in solver_names if not pd.isna(row[s])]
-        best = min(runtimes) if runtimes else None
+        # Determine best total runtime across all solvers (ignore NaNs).
+        totals = [row[s] for s in total_solvers if not pd.isna(row[s])]
+        best = min(totals) if totals else None
 
         cells = []
-        for s in solver_names:
-            val = row[s]
 
+        # --- QOCO-GPU: setup (analysis), solve, total ---
+        gpu_total = row["QOCO-GPU"]
+        if pd.isna(gpu_total):
+            cells.extend(["--", "--", "--"])
+        else:
+            setup = row["QOCO-GPU_setup"]
+            solve = row["QOCO-GPU_solve"]
+            analysis = row["QOCO-GPU_analysis"]
+
+            if pd.isna(analysis) or setup == 0:
+                setup_cell = f"{setup:.3f}"
+            else:
+                pct = int(round(100 * analysis / setup))
+                setup_cell = f"{setup:.3f} ({pct}\\%)"
+
+            solve_cell = f"{solve:.3f}"
+
+            if best is not None and gpu_total == best:
+                total_cell = f"\\winner {gpu_total:.3f}"
+            else:
+                total_cell = f"{gpu_total:.3f}"
+
+            cells.extend([setup_cell, solve_cell, total_cell])
+
+        # --- Single-column solvers: total runtime ---
+        for s in SINGLE_SOLVERS:
+            val = row[s]
             if pd.isna(val):
-                cells.append("-")
+                cells.append("--")
                 continue
 
-            frac = row.get(f"{s}_setup_frac", pd.NA)
-
-            # Format QOCO-GPU with optional setup %
-            if s == "QOCO-GPU":
-                if pd.isna(frac) or frac < 1e-6:
-                    base = f"{val:.3f}"
-                else:
-                    pct = int(round(100 * frac))
-                    base = f"{val:.3f} ({pct}\\%)"
-            else:
-                base = f"{val:.3f}"
-
-            # Highlight winner (based on runtime only)
             if best is not None and val == best:
-                if s == "QOCO-GPU" and not pd.isna(frac) and frac >= 1e-6:
-                    pct = int(round(100 * frac))
-                    base = f"\\winner {val:.3f} ({pct}\\%)"
-                else:
-                    base = f"\\winner {val:.3f}"
-
-            cells.append(base)
+                cells.append(f"\\winner {val:.3f}")
+            else:
+                cells.append(f"{val:.3f}")
 
         name = latex_escape(row["name"])
 

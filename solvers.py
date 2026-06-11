@@ -9,12 +9,11 @@ import gurobipy as gp
 from gurobipy import GRB
 
 SOLVERS = {
-    "qoco": lambda prob: run_qoco(prob, algebra=None),
-    "qoco_cuda": lambda prob: run_qoco(prob, algebra="cuda"),
+    # "qoco": lambda prob: run_qoco(prob, algebra=None),
+    # "qoco_cuda": lambda prob: run_qoco(prob, algebra="cuda"),
     # "clarabel": lambda prob: run_clarabel(prob, algebra=None),
     "cuclarabel": lambda prob: run_clarabel(prob, algebra="cuda"),
-    "gurobi": lambda prob: run_gurobi(prob),
-    "mosek": lambda prob: run_mosek(prob),
+    # "mosek": lambda prob: run_mosek(prob),
 }
 
 VERBOSE = True
@@ -68,6 +67,48 @@ def dims_to_solver_cones(jl, cone_dims):
         jl.push_b(jl.cones, jl.Clarabel.SecondOrderConeT(dim))
 
 
+def _to_int32_indices(M):
+    """Return a CSR copy of M with int32 index arrays."""
+    M = M.tocsr().copy()
+    M.indices = M.indices.astype(np.int32)
+    M.indptr = M.indptr.astype(np.int32)
+    return M
+
+
+def cvxpy_to_problemdata(problem):
+    """Convert a cvxpy Problem into ProblemData via the CLARABEL canonicalization.
+
+    CLARABEL stacks constraint rows as [zero (equalities); nonneg; soc...], which
+    maps directly onto ProblemData's separate equality (A, b) and conic (G, h)
+    blocks. Used to route cvxpy-defined problems through solve_cuclarabel_direct
+    instead of the cvxpy CUCLARABEL interface, which mishandles int64 indices.
+    """
+    data, _, _ = problem.get_problem_data(cp.CLARABEL)
+    dims = data["dims"]
+    n = data["c"].size
+    P = data["P"] if "P" in data else None
+
+    A_full = data["A"].tocsr()
+    b_full = data["b"]
+    zero = dims.zero
+    q = list(dims.soc)
+
+    return ProblemData(
+        n=n,
+        m=A_full.shape[0] - zero,
+        p=zero,
+        P=P,
+        c=data["c"],
+        A=A_full[:zero],
+        b=b_full[:zero],
+        G=A_full[zero:],
+        h=b_full[zero:],
+        l=dims.nonneg,
+        nsoc=len(q),
+        q=q,
+    )
+
+
 def solve_cuclarabel_direct(data):
     import cupy
     from cupyx.scipy.sparse import csr_matrix as cucsr_matrix
@@ -105,6 +146,12 @@ def solve_cuclarabel_direct(data):
         P = sp.csr_matrix((data.n, data.n))
 
     q = data.c
+
+    # CuClarabel's cupy_to_cucsrmat reads the index pointers as Int32, so the
+    # CSR index arrays must be int32. cvxpy-derived matrices use int64 indices,
+    # which would otherwise be reinterpreted as garbage (BoundsError / segfault).
+    A_combined = _to_int32_indices(A_combined)
+    P = _to_int32_indices(P)
 
     # Convert to GPU arrays
     Pgpu = cucsr_matrix(P)
@@ -335,11 +382,14 @@ def run_clarabel(problem, algebra=None):
         else:
             return solve_clarabel_direct(problem)
 
-    # Call solvers via cvxpy interface
+    # The cvxpy CUCLARABEL interface reinterprets cvxpy's int64 CSR indices as
+    # int32 on the GPU, causing segfaults. Convert to ProblemData and use the
+    # direct interface instead.
     if algebra == "cuda":
-        problem.solve(verbose=VERBOSE, solver="CUCLARABEL")
-    else:
-        problem.solve(verbose=VERBOSE, solver="CLARABEL")
+        return solve_cuclarabel_direct(cvxpy_to_problemdata(problem))
+
+    # Call solvers via cvxpy interface
+    problem.solve(verbose=VERBOSE, solver="CLARABEL")
 
     setup_time = (
         0
@@ -379,11 +429,11 @@ def run_qoco(problem, algebra=None):
             verbose=VERBOSE,
         )
         res = prob.solve()
-
         return {
             "setup_time": res.setup_time_sec,
             "status": res.status,
             "solve_time": res.solve_time_sec,
+            "analysis_time": res.analysis_time_sec,
             "num_iters": res.iters,
             "objective": res.obj,
         }
@@ -394,23 +444,18 @@ def run_qoco(problem, algebra=None):
     else:
         problem.solve(verbose=VERBOSE, solver="QOCO")
 
-    setup_time = (
-        0
-        if problem.solver_stats.setup_time is None
-        else problem.solver_stats.setup_time
-    )
+    setup_time = problem.solver_stats.setup_time
     solve_time = problem.solver_stats.solve_time
-    num_iters = (
-        problem.solver_stats.num_iters
-        if hasattr(problem.solver_stats, "num_iters")
-        else None
-    )
+    analysis_time = problem.solver_stats.extra_stats["analysis_time_sec"]
+
+    num_iters = problem.solver_stats.num_iters
     objective = problem.value
 
     return {
         "setup_time": setup_time,
         "status": problem.status,
         "solve_time": solve_time,
+        "analysis_time": analysis_time,
         "num_iters": num_iters,
         "objective": objective,
     }

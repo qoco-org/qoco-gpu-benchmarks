@@ -1,67 +1,71 @@
 {\footnotesize
-\begin{longtable}{l r r r r r r}
-\caption{\bf Runtime in seconds for benchmark problems (QOCO-GPU shows setup time percentage in parentheses)}
+\begin{longtable}{l r *{3}{r} r r r}
+\caption{\bf Runtime in seconds for benchmark problems. The QOCO-GPU columns decompose its total runtime into setup and solve time; the value in parentheses is the percentage of setup time spent in cuDSS's analysis (reordering) phase, the dominant component of setup. The fastest total runtime for each instance is highlighted.}
 \label{tab:solver_benchmarks} \\
 
 \toprule
-Problem & Size & QOCO-GPU & QOCO & CuClarabel & Mosek & Gurobi \\
+ & & \multicolumn{3}{c}{QOCO-GPU} & & & \\
+\cmidrule(lr){3-5}
+Problem & Size & Setup & Solve & Total & QOCO & CuClarabel & Mosek \\
 \midrule
 \endfirsthead
 
 \toprule
-Problem & Size & QOCO-GPU & QOCO & CuClarabel & Mosek & Gurobi \\
+ & & \multicolumn{3}{c}{QOCO-GPU} & & & \\
+\cmidrule(lr){3-5}
+Problem & Size & Setup & Solve & Total & QOCO & CuClarabel & Mosek \\
 \midrule
 \endhead
 
 \midrule
-\multicolumn{7}{r}{\footnotesize Continued on next page} \\
+\multicolumn{8}{r}{\footnotesize Continued on next page} \\
 \endfoot
 
 \bottomrule
 \endlastfoot
-huber\_50 & 5500 & 0.057 (17\%) & \winner 0.003 & 0.036 & 0.011 & 0.027 \\
-huber\_200 & 52000 & 0.084 (40\%) & \winner 0.031 & 0.069 & 0.097 & 0.069 \\
-huber\_500 & 280000 & 0.165 (56\%) & 0.280 & \winner 0.152 & 0.605 & 0.663 \\
-huber\_1000 & 1060000 & \winner 0.416 (69\%) & 1.868 & 0.431 & 4.153 & 5.278 \\
-huber\_2000 & 4120000 & \winner 1.534 (78\%) & 18.510 & 1.650 & 36.219 & 20.051 \\
-huber\_4000 & 16240000 & \winner 5.885 (79\%) & 159.576 & 6.435 & 331.281 & 89.658 \\
-huber\_6000 & 36360000 & \winner 13.167 (78\%) & 478.210 & 25.557 & 1390.174 & 252.042 \\
-huber\_10000 & 100600000 & \winner 39.816 (76\%) & 1459.514 & 107.326 & - & 439.726 \\
+huber\_50 & 5500 & 0.010 (93\%) & 0.042 & 0.051 & \winner 0.003 & 0.033 & 0.012 \\
+huber\_200 & 52000 & 0.034 (95\%) & 0.046 & 0.080 & \winner 0.030 & 0.066 & 0.096 \\
+huber\_500 & 280000 & 0.095 (93\%) & 0.068 & 0.164 & 0.272 & \winner 0.160 & 0.593 \\
+huber\_1000 & 1060000 & 0.313 (92\%) & 0.129 & 0.442 & 1.749 & \winner 0.426 & 4.193 \\
+huber\_2000 & 4120000 & 1.270 (84\%) & 0.347 & 1.617 & 17.769 & \winner 1.513 & 36.359 \\
+huber\_4000 & 16240000 & 4.739 (87\%) & 1.265 & \winner 6.004 & 157.001 & 6.142 & 328.701 \\
+huber\_6000 & 36360000 & 10.632 (86\%) & 3.017 & \winner 13.649 & 473.881 & 25.808 & 1378.405 \\
+huber\_10000 & 100600000 & 30.838 (85\%) & 9.524 & \winner 40.362 & 1457.788 & 107.742 & -- \\
 \midrule
-portfolio\_10 & 8020 & 0.078 (11\%) & \winner 0.003 & 0.046 & 0.008 & 0.003 \\
-portfolio\_50 & 140100 & 0.100 (36\%) & 0.063 & 0.115 & 0.064 & \winner 0.050 \\
-portfolio\_100 & 530200 & \winner 0.159 (51\%) & 0.350 & 0.181 & 0.237 & 0.191 \\
-portfolio\_200 & 2060400 & \winner 0.393 (64\%) & 5.282 & 0.427 & 1.015 & 0.813 \\
-portfolio\_500 & 12651000 & \winner 2.206 (76\%) & 79.760 & 2.560 & 6.763 & 5.564 \\
-portfolio\_900 & 40771800 & \winner 7.501 (71\%) & 406.031 & 7.738 & 20.330 & 26.248 \\
-portfolio\_1300 & 84892600 & \winner 17.128 (67\%) & 1149.773 & 18.409 & 47.382 & 61.083 \\
-portfolio\_1800 & 162543600 & \winner 34.458 (65\%) & 2618.632 & 37.001 & 108.825 & 170.539 \\
+portfolio\_10 & 8020 & 0.009 (93\%) & 0.052 & 0.061 & \winner 0.003 & 0.044 & 0.009 \\
+portfolio\_50 & 140100 & 0.037 (88\%) & 0.061 & 0.098 & \winner 0.060 & 0.113 & 0.065 \\
+portfolio\_100 & 530200 & 0.087 (82\%) & 0.080 & \winner 0.167 & 0.322 & 0.174 & 0.231 \\
+portfolio\_200 & 2060400 & 0.291 (75\%) & 0.151 & 0.441 & 4.991 & \winner 0.426 & 1.033 \\
+portfolio\_500 & 12651000 & 1.734 (74\%) & 0.575 & \winner 2.308 & 78.553 & 2.525 & 6.683 \\
+portfolio\_900 & 40771800 & 5.438 (73\%) & 2.270 & \winner 7.708 & 404.640 & 7.806 & 20.204 \\
+portfolio\_1300 & 84892600 & 11.739 (73\%) & 5.837 & \winner 17.575 & 1157.704 & 18.564 & 50.127 \\
+portfolio\_1800 & 162543600 & 23.079 (72\%) & 12.394 & \winner 35.473 & 2606.001 & 36.919 & 107.595 \\
 \midrule
-multiperiod\_portfolio\_2 & 385600 & 0.247 & 0.891 & \winner 0.244 & 0.302 & 0.511 \\
-multiperiod\_portfolio\_5 & 956500 & \winner 0.568 & 3.742 & 0.589 & 1.148 & 1.516 \\
-multiperiod\_portfolio\_10 & 1908000 & \winner 1.209 & 15.418 & 1.266 & 3.215 & 5.662 \\
-multiperiod\_portfolio\_15 & 2859500 & \winner 1.955 & 33.728 & 2.097 & 7.102 & 12.838 \\
-multiperiod\_portfolio\_25 & 4762500 & \winner 3.601 & 85.747 & 3.776 & 14.854 & 35.032 \\
-multiperiod\_portfolio\_50 & 9520000 & \winner 8.427 & 346.344 & 9.208 & 76.905 & 277.693 \\
-multiperiod\_portfolio\_75 & 14277500 & \winner 14.317 & 871.908 & 15.257 & 411.356 & 693.854 \\
-multiperiod\_portfolio\_125 & 23792500 & 43.295 & 2952.094 & \winner 40.338 & 229.780 & 3221.442 \\
+multiperiod\_portfolio\_2 & 385600 & 0.160 (94\%) & 0.092 & 0.252 & 0.832 & \winner 0.245 & 0.278 \\
+multiperiod\_portfolio\_5 & 956500 & 0.423 (94\%) & 0.145 & \winner 0.569 & 3.670 & 0.572 & 1.153 \\
+multiperiod\_portfolio\_10 & 1908000 & 1.002 (95\%) & 0.272 & 1.274 & 14.760 & \winner 1.219 & 3.300 \\
+multiperiod\_portfolio\_15 & 2859500 & 1.669 (94\%) & 0.426 & 2.094 & 32.600 & \winner 2.047 & 7.346 \\
+multiperiod\_portfolio\_25 & 4762500 & 3.034 (95\%) & 0.824 & \winner 3.858 & 84.183 & 3.984 & 14.841 \\
+multiperiod\_portfolio\_50 & 9520000 & 6.563 (94\%) & 2.407 & \winner 8.971 & 347.048 & 9.032 & 85.925 \\
+multiperiod\_portfolio\_75 & 14277500 & 10.384 (94\%) & 4.638 & \winner 15.022 & 868.063 & 15.670 & 420.323 \\
+multiperiod\_portfolio\_125 & 23792500 & 23.129 (96\%) & 21.638 & 44.767 & 2937.712 & \winner 42.315 & 230.138 \\
 \midrule
-group\_lasso\_5 & 8805 & 0.055 (19\%) & \winner 0.004 & 0.043 & 0.006 & 0.069 \\
-group\_lasso\_20 & 110220 & 0.097 (41\%) & 0.107 & 0.081 & \winner 0.032 & 2.944 \\
-group\_lasso\_50 & 650550 & 0.234 (69\%) & 1.104 & 0.226 & \winner 0.216 & 34.604 \\
-group\_lasso\_100 & 2551100 & \winner 0.716 (80\%) & 4.666 & 6.445 & 0.986 & 229.384 \\
-group\_lasso\_150 & 5701650 & \winner 1.543 (83\%) & 16.067 & 3.134 & 2.171 & 877.229 \\
-group\_lasso\_300 & 22653300 & 6.551 (82\%) & 112.120 & \winner 6.309 & 13.908 & - \\
-group\_lasso\_450 & 50854950 & 15.627 (79\%) & 342.902 & \winner 14.973 & 49.441 & - \\
-group\_lasso\_750 & 141008250 & \winner 54.863 (74\%) & 1400.521 & 165.127 & 336.563 & - \\
+group\_lasso\_5 & 8805 & 0.010 (94\%) & 0.046 & 0.056 & \winner 0.004 & 0.041 & 0.004 \\
+group\_lasso\_20 & 110220 & 0.040 (93\%) & 0.053 & 0.093 & 0.100 & 0.079 & \winner 0.030 \\
+group\_lasso\_50 & 650550 & 0.157 (91\%) & 0.082 & 0.239 & 1.059 & 0.226 & \winner 0.213 \\
+group\_lasso\_100 & 2551100 & 0.589 (87\%) & 0.146 & \winner 0.735 & 4.149 & 3.623 & 1.073 \\
+group\_lasso\_150 & 5701650 & 1.361 (85\%) & 0.252 & \winner 1.613 & 13.949 & 2.888 & 2.189 \\
+group\_lasso\_300 & 22653300 & 5.519 (83\%) & 1.154 & 6.673 & 98.224 & \winner 6.362 & 13.819 \\
+group\_lasso\_450 & 50854950 & 12.556 (83\%) & 3.133 & 15.689 & 301.257 & \winner 14.863 & 48.340 \\
+group\_lasso\_750 & 141008250 & 41.522 (84\%) & 13.317 & \winner 54.839 & 1224.034 & 164.802 & 339.257 \\
 \midrule
-tv\_denoising\_6 & 2092037 & \winner 6.110 & 18.302 & 6.229 & 23.394 & - \\
-tv\_denoising\_7 & 2092037 & 6.064 & 21.103 & \winner 5.880 & 38.575 & - \\
-tv\_denoising\_5 & 2092037 & \winner 6.141 & 18.471 & 6.381 & 18.190 & - \\
-tv\_denoising\_0 & 2966850 & \winner 8.706 & 1058.975 & 13.401 & 26.812 & - \\
-tv\_denoising\_2 & 5267013 & \winner 16.804 & 2287.905 & 24.972 & 64.232 & - \\
-tv\_denoising\_1 & 5753869 & \winner 18.558 & 2702.704 & 27.056 & 99.934 & - \\
-tv\_denoising\_3 & 5753869 & \winner 18.457 & 2681.049 & 26.344 & 96.628 & - \\
-tv\_denoising\_4 & 7233017 & \winner 27.720 & - & 36.955 & 153.639 & - \\
+tv\_denoising\_6 & 2092037 & 5.295 (98\%) & 1.568 & 6.863 & 18.302 & \winner 6.324 & 23.394 \\
+tv\_denoising\_7 & 2092037 & 5.314 (98\%) & 1.408 & 6.722 & 21.103 & \winner 6.139 & 38.575 \\
+tv\_denoising\_5 & 2092037 & 5.315 (98\%) & 1.523 & 6.839 & 18.471 & \winner 6.663 & 18.190 \\
+tv\_denoising\_0 & 2966850 & 7.303 (98\%) & 2.277 & \winner 9.580 & 1058.975 & 13.068 & 26.812 \\
+tv\_denoising\_2 & 5267013 & 13.782 (97\%) & 4.897 & \winner 18.679 & 2287.905 & 24.582 & 64.232 \\
+tv\_denoising\_1 & 5753869 & 15.057 (97\%) & 5.979 & \winner 21.036 & 2702.704 & 27.359 & 99.934 \\
+tv\_denoising\_3 & 5753869 & 15.311 (97\%) & 4.838 & \winner 20.149 & 2681.049 & 26.219 & 96.628 \\
+tv\_denoising\_4 & 7233017 & 20.864 (96\%) & 8.674 & \winner 29.538 & -- & 35.797 & 153.639 \\
 \end{longtable}
 }

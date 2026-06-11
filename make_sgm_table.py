@@ -18,7 +18,6 @@ solvers = {
     "QOCO": "qoco_results.csv",
     "CuClarabel": "cuclarabel_results.csv",
     "Mosek": "mosek_results.csv",
-    "Gurobi": "gurobi_results.csv",
 }
 
 

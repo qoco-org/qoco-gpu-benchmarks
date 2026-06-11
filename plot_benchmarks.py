@@ -11,7 +11,6 @@ COLOR = {
     "qoco_cuda": "mediumseagreen",
     "cuclarabel": "darkviolet",
     "mosek": "firebrick",
-    "gurobi": "coral",
 }
 
 PROBLEMS = [
@@ -27,7 +26,6 @@ SOLVERS = {
     "qoco_cuda": r"\textsc{QOCO-GPU}",
     "cuclarabel": r"\textsc{CuClarabel}",
     "mosek": r"\textsc{Mosek}",
-    "gurobi": r"\textsc{Gurobi}",
 }
 
 
