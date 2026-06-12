@@ -19,15 +19,13 @@ solvers = {
     "QOCO-GPU": "qoco_cuda_results.csv",
     "CuClarabel": "cuclarabel_results.csv",
     "Mosek": "mosek_results.csv",
-    "Gurobi": "gurobi_results.csv",
 }
 
 COLOR = {
-    "QOCO": "black",
+    "QOCO": "royalblue",
     "QOCO-GPU": "mediumseagreen",
     "CuClarabel": "darkviolet",
     "Mosek": "firebrick",
-    "Gurobi": "coral",
 }
 
 

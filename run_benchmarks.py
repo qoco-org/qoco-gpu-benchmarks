@@ -1,6 +1,16 @@
 import argparse
 from typing import Any
 import os
+
+# Initialize CUDA.jl before anything pulls in cupy. cvxpy's CuClarabel backend
+# imports cupy, which initializes its own CUDA runtime. If cupy initializes
+# before CUDA.jl, CUDA.jl's large cuDSS factorizations inside CuClarabel are
+# corrupted, producing ERROR_ILLEGAL_ADDRESS on big problems (e.g. huber
+# n>=6000). Forcing CUDA.jl to win the initialization race avoids the conflict.
+from juliacall import Main as _jl
+
+_jl.seval("using CUDA; CUDA.ones(1); CUDA.synchronize()")
+
 from problems.portfolio import *
 from problems.huber import *
 from problems.group_lasso import *

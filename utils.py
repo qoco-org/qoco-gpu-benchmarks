@@ -12,6 +12,7 @@ def write_results(results, name):
             "size",
             "status",
             "setup_time",
+            "analysis_time",
             "solve_time",
             "num_iters",
             "objective",
