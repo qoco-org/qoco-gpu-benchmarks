@@ -440,7 +440,7 @@ def run_qoco(problem, algebra=None):
 
     # Call solvers via cvxpy interface
     if algebra == "cuda":
-        problem.solve(verbose=VERBOSE, solver="QOCO", algebra="cuda")
+        problem.solve(verbose=VERBOSE, solver="QOCO", algebra="cuda", warm_start=False)
     else:
         problem.solve(verbose=VERBOSE, solver="QOCO")
 
