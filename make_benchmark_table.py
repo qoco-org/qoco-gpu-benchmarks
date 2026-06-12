@@ -20,6 +20,25 @@ solvers = {
 # Solvers shown as a single total-runtime column (in table order).
 SINGLE_SOLVERS = ["QOCO", "CuClarabel", "Mosek"]
 
+# tv_denoising instances are named by suffix index; map each index to the
+# scikit-image dataset used (see problems/tv_denoising.py).
+TV_DENOISING_NAMES = [
+    "chelsea",
+    "astronaut",
+    "coffee",
+    "immunohistochemistry",
+    "logo",
+    "brick",
+    "camera",
+    "grass",
+]
+
+
+def format_size(n):
+    """Group digits of an integer in threes with LaTeX thin spaces, e.g.
+    100600000 -> 100\\,600\\,000."""
+    return f"{int(n):,}".replace(",", r"\,")
+
 
 def latex_escape(s):
     return (
@@ -74,7 +93,22 @@ def load_problem(problem_name):
             merged = merged.merge(df[cols], on="name", how="outer")
 
     merged["size"] = merged["size"].ffill()
-    merged = merged.sort_values("size")
+
+    # tv_denoising's _0.._N suffixes are out of order. Sort by the suffix so the
+    # indices increase monotonically, keeping each instance's size and data
+    # attached to its name. Other families are sorted ascending by size.
+    if problem_name == "tv_denoising":
+        suffix = merged["name"].str.rsplit("_", n=1).str[-1].astype(int)
+        merged = merged.assign(_suffix=suffix).sort_values("_suffix")
+        merged = merged.reset_index(drop=True)
+        # Replace the suffix index with the dataset name it corresponds to.
+        merged["name"] = merged["_suffix"].map(
+            lambda i: f"{problem_name}_{TV_DENOISING_NAMES[i]}"
+        )
+        merged = merged.drop(columns="_suffix")
+    else:
+        merged = merged.sort_values("size").reset_index(drop=True)
+
     merged["problem_group"] = problem_name
 
     return merged
@@ -93,7 +127,7 @@ def make_benchmark_table():
     lines.append(r"\begin{longtable}{l r *{3}{r} r r r}")
     lines.append(
         r"\caption{\bf Runtime in seconds for benchmark problems. The QOCO-GPU "
-        r"columns decompose its total runtime into setup and solve time; the "
+        r"columns split its total runtime into setup and solve time. The "
         r"value in parentheses is the percentage of setup time spent in "
         r"cuDSS's analysis (reordering) phase, the dominant component of "
         r"setup. The fastest "
@@ -103,11 +137,11 @@ def make_benchmark_table():
     lines.append("")
 
     header_group = (
-        r" & & \multicolumn{3}{c}{QOCO-GPU} & & & \\"
+        r" & & \multicolumn{3}{c}{QOCO-GPU} & QOCO & CuClarabel & Mosek \\"
     )
     header_cmid = r"\cmidrule(lr){3-5}"
     header_cols = (
-        r"Problem & Size & Setup & Solve & Total & QOCO & CuClarabel & Mosek \\"
+        r"Problem & Size & Setup & Solve & Total & & & \\"
     )
 
     lines.append(r"\toprule")
@@ -186,7 +220,7 @@ def make_benchmark_table():
 
         name = latex_escape(row["name"])
 
-        line = f"{name} & {int(row['size'])} & " + " & ".join(cells) + r" \\"
+        line = f"{name} & {format_size(row['size'])} & " + " & ".join(cells) + r" \\"
 
         lines.append(line)
 
