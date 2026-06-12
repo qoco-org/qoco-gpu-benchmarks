@@ -1,7 +1,7 @@
 qoco==0.3.2
 qoco-cuda==0.2.2
 mosek
-git+https://github.com/govindchari/cvxpy.git@gc/add-qoco-extra-stats
+git+https://github.com/cvxpy/cvxpy.git@8d317d8275c7139a01c277cf2ff478a5e9ce34ec
 matplotlib
 scikit-image
 cupy
